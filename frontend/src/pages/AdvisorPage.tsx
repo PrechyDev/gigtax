@@ -27,6 +27,7 @@ export function AdvisorPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [failedQuestion, setFailedQuestion] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const historyQuery = useQuery({
@@ -52,6 +53,7 @@ export function AdvisorPage() {
   const askMutation = useMutation({
     mutationFn: (question: string) => queryAdvisor(question, sessionId ?? undefined),
     onSuccess: (data, question) => {
+      setFailedQuestion(null)
       setSessionId(data.session_id)
       sessionStorage.setItem(SESSION_STORAGE_KEY, data.session_id)
       setMessages((prev) => [
@@ -60,7 +62,10 @@ export function AdvisorPage() {
       ])
       void question
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not reach the advisor.'),
+    onError: (err, question) => {
+      setFailedQuestion(question)
+      setError(err instanceof ApiError ? err.message : 'Could not reach the advisor.')
+    },
   })
 
   function send(question: string) {
@@ -69,6 +74,12 @@ export function AdvisorPage() {
     setMessages((prev) => [...prev, { id: `local-${Date.now()}`, role: 'user', text: question }])
     setInput('')
     askMutation.mutate(question)
+  }
+
+  function retry() {
+    if (!failedQuestion || askMutation.isPending) return
+    setError(null)
+    askMutation.mutate(failedQuestion)
   }
 
   function handleSubmit(e: FormEvent) {
@@ -80,6 +91,8 @@ export function AdvisorPage() {
     sessionStorage.removeItem(SESSION_STORAGE_KEY)
     setSessionId(null)
     setMessages([])
+    setFailedQuestion(null)
+    setError(null)
   }
 
   return (
@@ -138,7 +151,14 @@ export function AdvisorPage() {
 
         {error && (
           <div className="px-4 pb-2">
-            <ErrorBanner message={error} onDismiss={() => setError(null)} />
+            <ErrorBanner
+              message={error}
+              onRetry={failedQuestion ? retry : undefined}
+              onDismiss={() => {
+                setError(null)
+                setFailedQuestion(null)
+              }}
+            />
           </div>
         )}
 
