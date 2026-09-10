@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session
 from api.deps import get_current_user_allow_query_token
 from core.config import settings
 from core.crypto import encrypt_token
+from core.logger import get_logger
 from core.security import create_access_token, decode_access_token
 from db.session import get_db
 from models.user import User
 from services.drive_service import DriveService, build_auth_flow
 
 router = APIRouter(prefix="/auth/google", tags=["google-drive"])
+logger = get_logger(__name__)
 
 # Short-lived — this token only needs to survive the round trip through Google's consent screen.
 STATE_TOKEN_EXPIRE_MINUTES = 10
@@ -21,16 +23,26 @@ STATE_TOKEN_EXPIRE_MINUTES = 10
 
 @router.get("/connect")
 def connect(current_user: User = Depends(get_current_user_allow_query_token)):
-    # The callback is a plain browser redirect from Google with no Authorization header,
-    # so we can't rely on get_current_user there — instead we smuggle the user's identity
-    # through the OAuth `state` param, signed with the same JWT mechanism as login tokens.
-    state = create_access_token(current_user.user_id, expires_minutes=STATE_TOKEN_EXPIRE_MINUTES)
-    flow = build_auth_flow(state=state)
-    authorization_url, _ = flow.authorization_url(
-        access_type="offline",
-        prompt="consent",
-        include_granted_scopes="true",
-    )
+    # This endpoint's whole contract is "redirect the browser somewhere" — so on any
+    # unexpected failure (e.g. misconfigured OAuth client secrets) it must still
+    # redirect, with an error flag the frontend can show a friendly banner for,
+    # rather than leaving the user staring at a raw 500 mid-flow.
+    try:
+        # The callback is a plain browser redirect from Google with no Authorization
+        # header, so we can't rely on get_current_user there — instead we smuggle the
+        # user's identity through the OAuth `state` param, signed with the same JWT
+        # mechanism as login tokens.
+        state = create_access_token(current_user.user_id, expires_minutes=STATE_TOKEN_EXPIRE_MINUTES)
+        flow = build_auth_flow(state=state)
+        authorization_url, _ = flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            include_granted_scopes="true",
+        )
+    except Exception:
+        logger.exception("Failed to start Google Drive OAuth flow for user_id=%s", current_user.user_id)
+        return RedirectResponse(f"{settings.FRONTEND_URL}/settings?drive=error")
+
     return RedirectResponse(authorization_url)
 
 

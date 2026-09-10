@@ -32,6 +32,20 @@ def test_connect_redirects_to_google_with_signed_state(client):
     assert decode_access_token(state_used)
 
 
+def test_connect_redirects_to_settings_with_error_flag_on_unexpected_failure(client):
+    token = _register(client, "drive-user-error@example.com")
+
+    with patch("api.routes.google_drive.build_auth_flow", side_effect=RuntimeError("misconfigured client secrets")):
+        response = client.get(
+            "/auth/google/connect",
+            headers={"Authorization": f"Bearer {token}"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code in (302, 307)
+    assert "drive=error" in response.headers["location"]
+
+
 def test_connect_requires_auth(client):
     response = client.get("/auth/google/connect", follow_redirects=False)
     assert response.status_code == 401

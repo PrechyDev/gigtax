@@ -20,10 +20,14 @@ export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('profile')
   const [searchParams] = useSearchParams()
   const [driveSuccess, setDriveSuccess] = useState(false)
+  const [driveError, setDriveError] = useState(false)
 
   useEffect(() => {
     if (searchParams.get('drive') === 'connected') {
       setDriveSuccess(true)
+      setTab('integrations')
+    } else if (searchParams.get('drive') === 'error') {
+      setDriveError(true)
       setTab('integrations')
     }
   }, [searchParams])
@@ -58,7 +62,12 @@ export function SettingsPage() {
         <div className="md:col-span-9">
           {tab === 'profile' && <ProfileTab />}
           {tab === 'integrations' && (
-            <IntegrationsTab showSuccess={driveSuccess} onDismissSuccess={() => setDriveSuccess(false)} />
+            <IntegrationsTab
+              showSuccess={driveSuccess}
+              onDismissSuccess={() => setDriveSuccess(false)}
+              showError={driveError}
+              onDismissError={() => setDriveError(false)}
+            />
           )}
           {tab === 'rules' && <RulesTab />}
         </div>
@@ -194,7 +203,17 @@ function ProfileTab() {
   )
 }
 
-function IntegrationsTab({ showSuccess, onDismissSuccess }: { showSuccess: boolean; onDismissSuccess: () => void }) {
+function IntegrationsTab({
+  showSuccess,
+  onDismissSuccess,
+  showError,
+  onDismissError,
+}: {
+  showSuccess: boolean
+  onDismissSuccess: () => void
+  showError: boolean
+  onDismissError: () => void
+}) {
   const { user } = useAuth()
 
   return (
@@ -206,6 +225,14 @@ function IntegrationsTab({ showSuccess, onDismissSuccess }: { showSuccess: boole
       {showSuccess && (
         <div className="mb-4">
           <SuccessBanner message="Google Drive connected successfully." onDismiss={onDismissSuccess} />
+        </div>
+      )}
+      {showError && (
+        <div className="mb-4">
+          <ErrorBanner
+            message="Could not connect to Google Drive. Please try again."
+            onDismiss={onDismissError}
+          />
         </div>
       )}
       <div className="flex items-center justify-between rounded-lg border border-outline-variant p-4">
