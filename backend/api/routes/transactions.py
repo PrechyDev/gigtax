@@ -65,6 +65,8 @@ def list_transactions(
     review_status: str | None = Query(default=None),
     tax_year: str | None = Query(default=None),
     transaction_type: str | None = Query(default=None, description="'income' or 'expense'"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -81,7 +83,7 @@ def list_transactions(
         query = query.filter(
             Transaction.date >= f"{tax_year}-01-01", Transaction.date <= f"{tax_year}-12-31"
         )
-    return query.order_by(Transaction.date.desc()).all()
+    return query.order_by(Transaction.date.desc()).offset(offset).limit(limit).all()
 
 
 @router.patch("/{transaction_id}", response_model=TransactionOut)

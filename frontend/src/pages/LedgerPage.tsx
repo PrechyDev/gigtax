@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listCategories, type Category } from '../api/categories'
 import { groupCategoriesForType } from '../lib/categoryLabels'
 import {
@@ -39,6 +39,8 @@ function filtersForTab(tab: LedgerTab): TransactionFilters {
   return {}
 }
 
+const PAGE_SIZE = 50
+
 export function LedgerPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
@@ -47,10 +49,13 @@ export function LedgerPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const transactionsQuery = useQuery({
+  const transactionsQuery = useInfiniteQuery({
     queryKey: ['transactions', tab],
-    queryFn: () => listTransactions(filtersForTab(tab)),
+    queryFn: ({ pageParam }) => listTransactions({ ...filtersForTab(tab), limit: PAGE_SIZE, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => (lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined),
   })
+  const rows = transactionsQuery.data?.pages.flat() ?? []
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
 
   const reviewMutation = useMutation({
@@ -124,7 +129,6 @@ export function LedgerPage() {
     })
   }
 
-  const rows = transactionsQuery.data ?? []
   const allSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.transaction_id))
 
   function toggleAll() {
@@ -206,11 +210,11 @@ export function LedgerPage() {
       {transactionsQuery.isError && (
         <ErrorBanner message="Could not load your transactions." onRetry={() => transactionsQuery.refetch()} />
       )}
-      {transactionsQuery.data && transactionsQuery.data.length === 0 && (
+      {!transactionsQuery.isLoading && rows.length === 0 && (
         <EmptyState icon="receipt_long" message="No transactions yet — upload a statement or add one manually." />
       )}
 
-      {transactionsQuery.data && transactionsQuery.data.length > 0 && (
+      {rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1">
           <table className="w-full text-sm">
             <thead>
@@ -228,7 +232,7 @@ export function LedgerPage() {
               </tr>
             </thead>
             <tbody>
-              {transactionsQuery.data.map((transaction) => (
+              {rows.map((transaction) => (
                 <TransactionRow
                   key={transaction.transaction_id}
                   transaction={transaction}
@@ -248,6 +252,19 @@ export function LedgerPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {transactionsQuery.hasNextPage && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => transactionsQuery.fetchNextPage()}
+            disabled={transactionsQuery.isFetchingNextPage}
+            className="flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50"
+          >
+            {transactionsQuery.isFetchingNextPage && <Spinner size={14} />}
+            Load more
+          </button>
         </div>
       )}
     </AppShell>

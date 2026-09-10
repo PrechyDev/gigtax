@@ -37,7 +37,9 @@ export interface TransactionFilters {
   review_status?: string
   tax_year?: string
   transaction_type?: string
-  [key: string]: string | undefined
+  limit?: number
+  offset?: number
+  [key: string]: string | number | undefined
 }
 
 export function listTransactions(filters: TransactionFilters = {}) {

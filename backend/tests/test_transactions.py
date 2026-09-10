@@ -53,6 +53,28 @@ def test_list_transactions_filters_by_review_status(client):
     assert response_pending.json() == []
 
 
+def test_list_transactions_respects_limit_and_offset(client):
+    headers = _auth_header(client, "tx-user-paging@example.com")
+    for i in range(5):
+        client.post("/transactions", json={
+            "transaction_type": "income",
+            "date": f"2026-02-0{i + 1}T00:00:00Z",
+            "description": f"Payment {i}",
+            "amount": 1000 * (i + 1),
+        }, headers=headers)
+
+    first_page = client.get("/transactions", params={"limit": 2}, headers=headers).json()
+    assert len(first_page) == 2
+    # Newest first (order_by date desc) — page 1 is the two most recent.
+    assert [t["description"] for t in first_page] == ["Payment 4", "Payment 3"]
+
+    second_page = client.get("/transactions", params={"limit": 2, "offset": 2}, headers=headers).json()
+    assert [t["description"] for t in second_page] == ["Payment 2", "Payment 1"]
+
+    third_page = client.get("/transactions", params={"limit": 2, "offset": 4}, headers=headers).json()
+    assert [t["description"] for t in third_page] == ["Payment 0"]
+
+
 def test_patch_transaction_approves_and_recategorizes(client):
     headers = _auth_header(client, "tx-user4@example.com")
     create_response = client.post("/transactions", json={
