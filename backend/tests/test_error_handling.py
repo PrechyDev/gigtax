@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 def _auth_header(client, email="error-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Error User", "email": email, "password": "supersecret123",
+        "name": "Error User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

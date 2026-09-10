@@ -7,7 +7,7 @@ from modules.ai_categorization.schemas import ParsedTransaction
 
 def _auth_header(client, email="stmt-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Statement User", "email": email, "password": "supersecret123",
+        "name": "Statement User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

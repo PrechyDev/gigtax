@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 def _auth_header(client, email="receipt-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Receipt User", "email": email, "password": "supersecret123",
+        "name": "Receipt User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

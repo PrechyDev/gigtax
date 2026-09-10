@@ -1,6 +1,6 @@
 def _auth_header(client, email="rules-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Rules User", "email": email, "password": "supersecret123",
+        "name": "Rules User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

@@ -1,6 +1,6 @@
 def _auth_header(client, email="tax-api-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Tax API User", "email": email, "password": "supersecret123",
+        "name": "Tax API User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

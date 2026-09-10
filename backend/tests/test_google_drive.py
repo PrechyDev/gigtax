@@ -6,7 +6,7 @@ from core.security import decode_access_token
 
 def _register(client, email="drive-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Drive User", "email": email, "password": "supersecret123",
+        "name": "Drive User", "email": email, "password": "Supersecret123!",
     })
     return response.json()["access_token"]
 

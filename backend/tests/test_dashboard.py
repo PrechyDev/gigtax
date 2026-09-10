@@ -3,7 +3,7 @@ import io
 
 def _auth_header(client, email="dash-user@example.com"):
     response = client.post("/auth/register", json={
-        "name": "Dash User", "email": email, "password": "supersecret123",
+        "name": "Dash User", "email": email, "password": "Supersecret123!",
     })
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

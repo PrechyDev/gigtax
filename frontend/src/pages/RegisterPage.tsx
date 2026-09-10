@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/apiClient'
 import { NIGERIA_STATES } from '../lib/nigeriaStates'
+import { checkPasswordRules } from '../lib/passwordRules'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner } from '../components/ui/Banner'
 import { SelectField, TextField } from '../components/ui/FormField'
@@ -22,14 +23,22 @@ export function RegisterPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const passwordRules = checkPasswordRules(form.password)
+  const passwordMeetsAllRules = passwordRules.every((rule) => rule.met)
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!passwordMeetsAllRules) {
+      setPasswordTouched(true)
+      return
+    }
     setIsSubmitting(true)
     try {
       await register(form)
@@ -71,7 +80,23 @@ export function RegisterPage() {
             minLength={8}
             value={form.password}
             onChange={(e) => update('password', e.target.value)}
+            onFocus={() => setPasswordTouched(true)}
           />
+          {passwordTouched && (
+            <ul className="-mt-2 space-y-1 rounded-lg bg-surface-container px-3 py-2 text-xs">
+              {passwordRules.map((rule) => (
+                <li
+                  key={rule.label}
+                  className={`flex items-center gap-1.5 ${rule.met ? 'text-emerald' : 'text-on-surface-variant'}`}
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {rule.met ? 'check_circle' : 'radio_button_unchecked'}
+                  </span>
+                  {rule.label}
+                </li>
+              ))}
+            </ul>
+          )}
           <TextField
             label="Occupation"
             placeholder="e.g. Freelance designer"

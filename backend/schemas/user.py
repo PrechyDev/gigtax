@@ -16,6 +16,16 @@ def _validate_tax_year(value: str | None) -> str | None:
     return value
 
 
+def _validate_password_strength(value: str) -> str:
+    if not any(c.isdigit() for c in value):
+        raise ValueError("Password must contain at least one number.")
+    if not any(c.isupper() for c in value):
+        raise ValueError("Password must contain at least one uppercase letter.")
+    if not any(not c.isalnum() for c in value):
+        raise ValueError("Password must contain at least one special character.")
+    return value
+
+
 class UserRegister(BaseModel):
     name: str = Field(max_length=NAME_MAX_LENGTH)
     email: EmailStr
@@ -28,6 +38,11 @@ class UserRegister(BaseModel):
     @classmethod
     def _check_tax_year(cls, value: str | None) -> str | None:
         return _validate_tax_year(value)
+
+    @field_validator("password")
+    @classmethod
+    def _check_password_strength(cls, value: str) -> str:
+        return _validate_password_strength(value)
 
 
 class UserLogin(BaseModel):
