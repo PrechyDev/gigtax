@@ -1,0 +1,39 @@
+@startuml GigTax_Sequence_RAG_Advisory
+hide footbox
+skinparam shadowing false
+skinparam sequence {
+    ArrowColor #003366
+    LifeLineBorderColor #003366
+    ParticipantBorderColor #003366
+    ParticipantBackgroundColor White
+    ActorBorderColor #003366
+}
+
+actor Taxpayer
+participant System
+participant VectorDB
+participant LanguageModel
+participant Database
+
+Taxpayer -> System : askQuestion(query:String)
+activate System
+
+System -> VectorDB : semanticSearch(query)
+activate VectorDB
+VectorDB --> System : retrieved_context
+deactivate VectorDB
+
+System -> LanguageModel : generateResponse(query, retrieved_context)
+activate LanguageModel
+LanguageModel --> System : generated_response
+deactivate LanguageModel
+
+System -> Database : logQuery(query, response)
+activate Database
+Database --> System
+deactivate Database
+
+System --> Taxpayer : return response
+deactivate System
+
+@enduml

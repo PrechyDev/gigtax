@@ -1,0 +1,27 @@
+import uuid
+from sqlalchemy import Column, String, DateTime, func, Boolean, Float
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
+from db.base_class import Base
+
+class User(Base):
+    __tablename__ = "users"
+
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    occupation_type = Column(String(50))
+    state_residence = Column(String(50))
+    tax_year = Column(String(4))
+    has_home_office = Column(Boolean, default=False)
+    home_office_percentage = Column(Float, default=0.0) # E.g., 20.0 for 20%
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    statements = relationship("StatementUpload", back_populates="user", cascade="all, delete-orphan")
+    custom_rules = relationship("CustomRule", back_populates="user", cascade="all, delete-orphan")
+    computations = relationship("TaxComputation", back_populates="user", cascade="all, delete-orphan")
+    transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
+    advisory_queries = relationship("AIAdvisoryQuery", back_populates="user", cascade="all, delete-orphan")

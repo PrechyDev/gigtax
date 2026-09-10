@@ -1,0 +1,172 @@
+<mxfile host="65bd71144e">
+    <diagram id="architecture_id" name="Architecture">
+        <mxGraphModel dx="282" dy="424" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" background="#ffffff" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <UserObject label="" plantUmlData="{&#10;  &quot;data&quot;: &quot;@startuml GigTax_Architecture\nskinparam shadowing false\nskinparam defaultFontName Arial\nskinparam package {\n    BackgroundColor #F9F9F9\n    BorderColor #333333\n}\nskinparam rectangle {\n    BackgroundColor White\n    BorderColor #333333\n    RoundCorner 8\n}\nskinparam database {\n    BackgroundColor #E6F7FF\n    BorderColor #0066CC\n}\nskinparam cloud {\n    BackgroundColor #F0F0F0\n    BorderColor #666666\n}\n\ntop to bottom direction\n\nrectangle \&quot;Users (Taxpayers)\&quot; as Users\n\npackage \&quot;Client Tier\&quot; {\n    rectangle \&quot;Web Browser\&quot; as Browser\n    rectangle \&quot;Mobile Device\&quot; as Mobile\n}\n\npackage \&quot;Frontend Tier\&quot; {\n    rectangle \&quot;App Frontend\\n(React SPA)\&quot; as Frontend\n}\n\npackage \&quot;Backend Tier\&quot; {\n    rectangle \&quot;API Server\\n(FastAPI)\&quot; as API\n    rectangle \&quot;Tax Computation\\nEngine\&quot; as Engine\n    rectangle \&quot;PDF/CSV\\nParser\&quot; as Parser\n}\n\npackage \&quot;Data Tier\&quot; {\n    database \&quot;Relational Database\\n(PostgreSQL)\&quot; as RDB\n    database \&quot;Vector Database\&quot; as VDB\n}\n\npackage \&quot;Storage Tier\&quot; {\n    rectangle \&quot;Cloud Storage\\n(Files &amp; Receipts)\&quot; as Storage\n}\n\npackage \&quot;AI &amp; External Services\&quot; {\n    cloud \&quot;Language Model\\n(LLM Service)\&quot; as LLM\n}\n\nUsers --&gt; Browser\nUsers --&gt; Mobile\n\nBrowser --&gt; Frontend : HTTPS\nMobile --&gt; Frontend : HTTPS\n\nFrontend --&gt; API : REST API (JSON)\n\nAPI &lt;--&gt; Engine\nAPI &lt;--&gt; Parser\n\nAPI ---&gt; RDB : SQL\nAPI ---&gt; VDB : Vector Search\nAPI ---&gt; Storage : File I/O\nAPI ---&gt; LLM : Prompting\n\n@enduml\n&quot;,&#10;  &quot;config&quot;: null&#10;}" id="5E9ND-a7_Vlg_KJ5M8f0-51">
+                    <mxCell style="group;transparentBounds=1;editIcon=1;lockedGroup=0;groupPadding=10;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="1" connectable="0" vertex="1">
+                        <mxGeometry width="800.0009803921569" height="701" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_0" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-52">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="303.11" y="200" width="226.5" height="61" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Client Tier" plantUmlId="ct_1" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="Client Tier" id="5E9ND-a7_Vlg_KJ5M8f0-55">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="303.11" y="200" width="88" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_4" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-56">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="335.36" y="320" width="156" height="95" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="App Frontend&#10;(React SPA)" plantUmlId="n_6" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="App Frontend&#10;(React SPA)" id="5E9ND-a7_Vlg_KJ5M8f0-57">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-56" vertex="1">
+                        <mxGeometry x="15" y="34" width="126" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Frontend Tier" plantUmlId="ct_5" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="Frontend Tier" id="5E9ND-a7_Vlg_KJ5M8f0-58">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-56" vertex="1">
+                        <mxGeometry width="111" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_7" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-59">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="40" y="448" width="740.5" height="204" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="API Server&#10;(FastAPI)" plantUmlId="n_9" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="API Server&#10;(FastAPI)" id="5E9ND-a7_Vlg_KJ5M8f0-60">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-59" vertex="1">
+                        <mxGeometry x="235.9436274509804" y="34" width="268.61274509803917" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Tax Computation&#10;Engine" plantUmlId="n_10" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="Tax Computation&#10;Engine" id="5E9ND-a7_Vlg_KJ5M8f0-61">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-59" vertex="1">
+                        <mxGeometry x="30.5" y="120" width="167" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="e_28" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;startArrow=classicThin;startFill=1;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-80">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;startArrow=classicThin;startFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-59" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-61" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Backend Tier" plantUmlId="ct_8" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="Backend Tier" id="5E9ND-a7_Vlg_KJ5M8f0-63">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-59" vertex="1">
+                        <mxGeometry width="179.76593990472702" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_12" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-64">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="10" y="695" width="399" height="95" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Relational Database&#10;(PostgreSQL)" plantUmlId="n_14" plantUmlBaseStyle="shape=cylinder;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;" plantUmlBaseValue="Relational Database&#10;(PostgreSQL)" id="5E9ND-a7_Vlg_KJ5M8f0-65">
+                    <mxCell style="shape=cylinder;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;verticalAlign=middle;labelPosition=center;verticalLabelPosition=middle;align=center;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-64" vertex="1">
+                        <mxGeometry x="30" y="22" width="189.77" height="73" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Vector Database" plantUmlId="n_15" plantUmlBaseStyle="shape=cylinder;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;" plantUmlBaseValue="Vector Database" id="5E9ND-a7_Vlg_KJ5M8f0-66">
+                    <mxCell style="shape=cylinder;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-64" vertex="1">
+                        <mxGeometry x="240" y="34" width="146" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Data Tier" plantUmlId="ct_13" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="Data Tier" id="5E9ND-a7_Vlg_KJ5M8f0-67">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="10" y="695" width="79" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_16" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-68">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="433" y="695" width="182" height="95" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Cloud Storage&#10;(Files &amp;amp; Receipts)" plantUmlId="n_18" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="Cloud Storage&#10;(Files &amp; Receipts)" id="5E9ND-a7_Vlg_KJ5M8f0-69">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-68" vertex="1">
+                        <mxGeometry x="15" y="34" width="152" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Storage Tier" plantUmlId="ct_17" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="Storage Tier" id="5E9ND-a7_Vlg_KJ5M8f0-70">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="433" y="695" width="103" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="c_19" plantUmlBaseStyle="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-71">
+                    <mxCell style="rounded=0;fillColor=none;strokeColor=#000000;strokeWidth=1.5;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="639" y="695" width="183.72" height="95" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Language Model&#10;(LLM Service)" plantUmlId="n_21" plantUmlBaseStyle="shape=cloud;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="Language Model&#10;(LLM Service)" id="5E9ND-a7_Vlg_KJ5M8f0-72">
+                    <mxCell style="shape=cloud;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-71" vertex="1">
+                        <mxGeometry x="18.86" y="34" width="146" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="AI &amp; External Services" plantUmlId="ct_20" plantUmlBaseStyle="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;" plantUmlBaseValue="AI &amp; External Services" id="5E9ND-a7_Vlg_KJ5M8f0-73">
+                    <mxCell style="rounded=0;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;fontStyle=0;fontSize=14;align=left;spacingLeft=6;verticalAlign=middle;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="639" y="695" width="166" height="20" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Tax payer" plantUmlId="n_22" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="Users (Taxpayers)" id="5E9ND-a7_Vlg_KJ5M8f0-74">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="335.36" y="120" width="162" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="e_23" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-75">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-74" target="5E9ND-a7_Vlg_KJ5M8f0-53" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="HTTPS" plantUmlId="e_25" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="HTTPS" id="5E9ND-a7_Vlg_KJ5M8f0-77">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-53" target="5E9ND-a7_Vlg_KJ5M8f0-56" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="REST API (JSON)" plantUmlId="e_27" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="REST API (JSON)" id="5E9ND-a7_Vlg_KJ5M8f0-79">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-57" target="5E9ND-a7_Vlg_KJ5M8f0-60" edge="1">
+                        <mxGeometry x="-0.2442" y="2" relative="1" as="geometry">
+                            <mxPoint y="1" as="offset"/>
+                        </mxGeometry>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="SQL" plantUmlId="e_30" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="SQL" id="5E9ND-a7_Vlg_KJ5M8f0-82">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-65" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Vector Search" plantUmlId="e_31" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="Vector Search" id="5E9ND-a7_Vlg_KJ5M8f0-83">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-66" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="File I/O" plantUmlId="e_32" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="File I/O" id="5E9ND-a7_Vlg_KJ5M8f0-84">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-69" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Prompting" plantUmlId="e_33" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;" plantUmlBaseValue="Prompting" id="5E9ND-a7_Vlg_KJ5M8f0-85">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-72" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="Web Browser" plantUmlId="n_2" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="Web Browser" id="5E9ND-a7_Vlg_KJ5M8f0-53">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="369.36238532110093" y="223.2684210526316" width="90.04587155963303" height="31.46315789473684" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="PDF/CSV&#10;Parser" plantUmlId="n_11" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;" plantUmlBaseValue="PDF/CSV&#10;Parser" id="5E9ND-a7_Vlg_KJ5M8f0-62">
+                    <mxCell style="rounded=1;absoluteArcSize=1;arcSize=3;strokeWidth=1;fillColor=#F1F1F1;strokeColor=#181818;whiteSpace=wrap;fontSize=14;labelBackgroundColor=none;fontColor=#000000;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" vertex="1">
+                        <mxGeometry x="560.11" y="560" width="167" height="49" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+                <UserObject label="" plantUmlId="e_29" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;endArrow=classicThin;endFill=1;startArrow=classicThin;startFill=1;" plantUmlBaseValue="" id="5E9ND-a7_Vlg_KJ5M8f0-81">
+                    <mxCell style="strokeColor=#181818;fontColor=#000000;fontSize=14;html=1;endArrow=classicThin;endFill=1;startArrow=classicThin;startFill=1;rounded=0;labelBackgroundColor=none;" parent="5E9ND-a7_Vlg_KJ5M8f0-51" source="5E9ND-a7_Vlg_KJ5M8f0-60" target="5E9ND-a7_Vlg_KJ5M8f0-62" edge="1">
+                        <mxGeometry relative="1" as="geometry"/>
+                    </mxCell>
+                </UserObject>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

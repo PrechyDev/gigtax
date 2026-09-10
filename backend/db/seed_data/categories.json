@@ -1,0 +1,121 @@
+[
+  {
+    "classification": "Income",
+    "category_name": "Taxed Employment Income",
+    "developer_slug": "taxed_salary_paye",
+    "description": "Net salary received where the employer has already calculated and remitted PAYE tax. Exclude from progressive tax calculation. Used purely to calculate your Total Income bracket and check if PAYE was deducted accurately.",
+    "tax_treatment": "excluded_from_progressive_tax"
+  },
+  {
+    "classification": "Income",
+    "category_name": "Untaxed Contract Income",
+    "developer_slug": "untaxed_contract_salary",
+    "description": "Gross salary or fixed retainer paid by an employer who does not deduct monthly PAYE tax.",
+    "tax_treatment": "subject_to_progressive_tax"
+  },
+  {
+    "classification": "Income",
+    "category_name": "Professional Gig Fees",
+    "developer_slug": "freelance_gig_fees",
+    "description": "One-off or recurring project fees from local or international freelance platforms.",
+    "tax_treatment": "subject_to_progressive_tax_after_expenses"
+  },
+  {
+    "classification": "Income",
+    "category_name": "Creator Ad Revenue",
+    "developer_slug": "creator_ad_revenue",
+    "description": "Monitization inflows from YouTube, ad networks, sponsored posts, or brand sponsorships.",
+    "tax_treatment": "subject_to_progressive_tax_after_expenses"
+  },
+  {
+    "classification": "Income",
+    "category_name": "IP Royalties",
+    "developer_slug": "ip_royalties",
+    "description": "Recurring payments for licensing software, designs, copy, stock photos, or music.",
+    "tax_treatment": "subject_to_progressive_tax"
+  },
+  {
+    "classification": "Income",
+    "category_name": "Sales of Previously Owned Items",
+    "developer_slug": "sales_owned_items",
+    "description": "Income from selling personal, previously owned items. This is generally non-taxable.",
+    "tax_treatment": "non_taxable"
+  },
+  {
+    "classification": "Income",
+    "category_name": "Sales of digital or physical products",
+    "developer_slug": "sales_of_products",
+    "description": "Income generated from the sale of physical or digital products in a business capacity.",
+    "tax_treatment": "subject_to_progressive_tax_after_expenses"
+  },
+  {
+    "classification": "Expense",
+    "category_name": "Software & Subscriptions",
+    "developer_slug": "exp_software_subscriptions",
+    "description": "Cost of tools used to deliver work (Adobe, GitHub, Zoom, AWS, Notion, Figma).",
+    "tax_treatment": "100_percent_deductible"
+  },
+  {
+    "classification": "Expense",
+    "category_name": "Internet & Communication",
+    "developer_slug": "exp_internet_data",
+    "description": "Monthly data plans, fiber broadband, or dedicated business phone line expenses.",
+    "tax_treatment": "100_percent_deductible"
+  },
+  {
+    "classification": "Expense",
+    "category_name": "Power & Workspace Utilities",
+    "developer_slug": "exp_power_utilities",
+    "description": "Electricity bills, solar infrastructure maintenance, or fueling generators for work.",
+    "tax_treatment": "100_percent_deductible_home_office"
+  },
+  {
+    "classification": "Expense",
+    "category_name": "Subcontracting & Outsourcing",
+    "developer_slug": "exp_outsourcing_staff",
+    "description": "Fees paid to virtual assistants, designers, developers, or content writers helping you.",
+    "tax_treatment": "100_percent_deductible"
+  },
+  {
+    "classification": "Expense",
+    "category_name": "Marketing & Advertisements",
+    "developer_slug": "exp_marketing_ads",
+    "description": "Paid campaigns on Google/Meta/LinkedIn and website domain/hosting renewals.",
+    "tax_treatment": "100_percent_deductible"
+  },
+  {
+    "classification": "Relief",
+    "category_name": "Residential Rent Relief",
+    "developer_slug": "relief_residential_rent",
+    "description": "NTA 2025 deduction allowance calculated as 20% of your annual physical rent payment.",
+    "tax_treatment": "deductible_relief_capped"
+  },
+  {
+    "classification": "Relief",
+    "category_name": "Voluntary Pension (CPS)",
+    "developer_slug": "relief_pension_voluntary",
+    "description": "Contributions made personally into a registered Pension Fund Administrator (PFA).",
+    "tax_treatment": "deductible_relief_capped"
+  },
+  {
+    "classification": "Relief",
+    "category_name": "Health Insurance (NHIA)",
+    "developer_slug": "relief_health_insurance",
+    "description": "Premium payments made to HMOs or the national health insurance framework.",
+    "tax_treatment": "100_percent_deductible_relief"
+  },
+  {
+    "classification": "Relief",
+    "category_name": "Life Assurance Premiums",
+    "developer_slug": "relief_life_assurance",
+    "description": "Personal premium payments paid toward a valid life assurance policy.",
+    "tax_treatment": "100_percent_deductible_relief"
+  },
+  {
+    "classification": "Unknown",
+    "category_name": "Uncategorized",
+    "developer_slug": "uncategorized",
+    "description": "Fallback category for transactions that cannot be identified.",
+    "tax_treatment": "unclassified"
+  }
+]

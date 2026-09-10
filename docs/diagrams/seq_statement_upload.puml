@@ -1,0 +1,44 @@
+@startuml GigTax_Sequence_StatementUpload
+hide footbox
+skinparam shadowing false
+skinparam sequence {
+    ArrowColor #003366
+    LifeLineBorderColor #003366
+    ParticipantBorderColor #003366
+    ParticipantBackgroundColor White
+    ActorBorderColor #003366
+}
+
+actor Taxpayer
+participant System
+participant AIService
+participant Database
+
+Taxpayer -> System : uploadFile(statement:File)
+activate System
+
+System -> System : parseData(statement)
+activate System
+deactivate System
+
+System -> AIService : categorizeViaAI(transactions)
+activate AIService
+AIService -> AIService : applyCustomRules()
+AIService --> System : categorizedTransactions
+deactivate AIService
+
+System --> Taxpayer : requestHumanReview(categorizedTransactions)
+deactivate System
+
+Taxpayer -> System : approveTransactions(reviewedTransactions)
+activate System
+
+System -> Database : saveTransactions(reviewedTransactions)
+activate Database
+Database --> System
+deactivate Database
+
+System --> Taxpayer : return success
+deactivate System
+
+@enduml

@@ -1,0 +1,145 @@
+@startuml GigTax_Class_Diagram
+'=========================================
+' GigTax — Class Diagram (Advanced UML)
+'=========================================
+
+skinparam class {
+    BackgroundColor White
+    ArrowColor Black
+    BorderColor Black
+}
+
+package "GigTax Core Entities" <<Frame>> {
+
+    class User {
+      +user_id : UUID {id}
+      +email : String
+      +password_hash : String
+      +full_name : String
+      +occupation_type : String
+      +state_of_residence : String
+      +tax_year : Integer
+      --
+      +register() : void
+      +login() : void
+      +updateProfile() : void
+    }
+
+    class StatementUpload {
+      +upload_id : UUID {id}
+      +file_name : String
+      +storage_path : String
+      +upload_date : DateTime
+      +parsing_status : String
+      +error_log : String
+      --
+      +uploadFile() : void
+      +parseData() : void
+      +updateStatus() : void
+    }
+
+    abstract class Transaction {
+      +transaction_id : UUID {id}
+      +date : Date
+      +description : String
+      +amount : Decimal
+      +currency : String
+      +ai_category : String
+      +user_category : String
+      +review_status : String
+      +tax_treatment : String
+      --
+      +createRecord() : void
+      +categorizeViaAI() : void
+      +updateReviewStatus() : void
+    }
+
+    class IncomeRecord {
+      +income_source : String
+      +is_taxable : Boolean
+      --
+      +applyExemption() : void
+    }
+
+    class ExpenseRecord {
+      +expense_type : String
+      +is_deductible : Boolean
+      --
+      +applyDeductionRule() : void
+    }
+
+    class CustomRule {
+      +rule_id : UUID {id}
+      +keyword_pattern : String
+      +assigned_category : String
+      +is_active : Boolean
+      --
+      +createRule() : void
+      +evaluateTransaction() : void
+    }
+
+    class Receipt {
+      +receipt_id : UUID {id}
+      +storage_path : String
+      +upload_date : DateTime
+      +file_type : String
+      --
+      +uploadDocument() : void
+      +linkToTransaction() : void
+    }
+
+    class TaxComputation {
+      +computation_id : UUID {id}
+      +tax_year : Integer
+      +total_income : Decimal
+      +total_deductions : Decimal
+      +statutory_reliefs : Decimal
+      +chargeable_income : Decimal
+      +gross_tax : Decimal
+      +net_tax_payable : Decimal
+      +computation_date : DateTime
+      --
+      +calculateLiability() : void
+      +applyReliefs() : void
+    }
+
+    class TaxReport {
+      +report_id : UUID {id}
+      +file_path : String
+      +generated_date : DateTime
+      --
+      +generatePDF() : void
+      +downloadReport() : void
+    }
+
+    class AIAdvisoryQuery {
+      +query_id : UUID {id}
+      +user_question : String
+      +retrieved_context : String
+      +generated_response : String
+      +timestamp : DateTime
+      --
+      +askQuestion() : void
+      +generateResponse() : void
+    }
+
+    ' Relationships
+    ' Inheritance
+    Transaction <|-- IncomeRecord
+    Transaction <|-- ExpenseRecord
+
+    ' Composition (Solid Diamond)
+    User *-- "0..*" StatementUpload
+    User *-- "0..*" TaxComputation
+    User *-- "0..*" CustomRule
+    User *-- "0..*" AIAdvisoryQuery
+    User *-- "0..*" Transaction : enters manually
+    
+    StatementUpload *-- "0..*" Transaction : parses into
+    TaxComputation *-- "1" TaxReport : contains
+
+    ' Aggregation (Hollow Diamond)
+    Transaction o-- "0..1" Receipt : supported by
+}
+
+@enduml

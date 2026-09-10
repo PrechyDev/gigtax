@@ -1,0 +1,27 @@
+@startuml GigTax_Sequence_ManualEntry
+hide footbox
+skinparam shadowing false
+skinparam sequence {
+    ArrowColor #003366
+    LifeLineBorderColor #003366
+    ParticipantBorderColor #003366
+    ParticipantBackgroundColor White
+    ActorBorderColor #003366
+}
+
+actor Taxpayer
+participant System
+participant Database
+
+Taxpayer -> System : createRecord(date, desc, amount, user_category)
+activate System
+
+System -> Database : saveTransaction(transaction)
+activate Database
+Database --> System
+deactivate Database
+
+System --> Taxpayer : return success
+deactivate System
+
+@enduml

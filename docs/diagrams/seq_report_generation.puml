@@ -1,0 +1,46 @@
+@startuml GigTax_Sequence_Report_Generation
+hide footbox
+skinparam shadowing false
+skinparam sequence {
+    ArrowColor #003366
+    LifeLineBorderColor #003366
+    ParticipantBorderColor #003366
+    ParticipantBackgroundColor White
+    ActorBorderColor #003366
+}
+
+actor Taxpayer
+participant System
+participant Database
+
+Taxpayer -> System : calculateLiability(tax_year)
+activate System
+
+System -> Database : fetchTransactions(tax_year)
+activate Database
+Database --> System : transactions
+deactivate Database
+
+System -> System : ComputeTaxLiability()
+activate System
+deactivate System
+
+System --> Taxpayer : return computationSummary
+deactivate System
+
+Taxpayer -> System : generatePDF(computation_id)
+activate System
+
+System -> System : buildReportDocument()
+activate System
+deactivate System
+
+System -> Database : saveTaxReport(report)
+activate Database
+Database --> System
+deactivate Database
+
+System --> Taxpayer : return Report PDF
+deactivate System
+
+@enduml
