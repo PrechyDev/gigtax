@@ -1,4 +1,5 @@
 import { useAuth } from '../../context/AuthContext'
+import { AccountMenu } from './AccountMenu'
 
 export function TopBar({ title }: { title: string }) {
   const { user } = useAuth()
@@ -16,9 +17,7 @@ export function TopBar({ title }: { title: string }) {
             cloud_done
           </span>
         )}
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue/10 text-sm font-semibold text-blue-dark">
-          {user?.name?.charAt(0).toUpperCase() ?? '?'}
-        </div>
+        <AccountMenu />
       </div>
     </header>
   )
