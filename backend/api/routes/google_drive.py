@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from api.deps import get_current_user
+from api.deps import get_current_user_allow_query_token
 from core.config import settings
 from core.crypto import encrypt_token
 from core.security import create_access_token, decode_access_token
@@ -20,7 +20,7 @@ STATE_TOKEN_EXPIRE_MINUTES = 10
 
 
 @router.get("/connect")
-def connect(current_user: User = Depends(get_current_user)):
+def connect(current_user: User = Depends(get_current_user_allow_query_token)):
     # The callback is a plain browser redirect from Google with no Authorization header,
     # so we can't rely on get_current_user there — instead we smuggle the user's identity
     # through the OAuth `state` param, signed with the same JWT mechanism as login tokens.

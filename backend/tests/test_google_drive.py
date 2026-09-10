@@ -37,6 +37,26 @@ def test_connect_requires_auth(client):
     assert response.status_code == 401
 
 
+def test_connect_accepts_token_via_query_param(client):
+    # A top-level browser navigation (the only way to reach Google's real consent
+    # screen) can't set an Authorization header — this is the fallback the frontend
+    # relies on for that one redirect.
+    token = _register(client, "drive-user-query@example.com")
+
+    with patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
+        mock_flow = MagicMock()
+        mock_flow.authorization_url.return_value = ("https://accounts.google.com/o/oauth2/auth?mock=1", None)
+        mock_build_flow.return_value = mock_flow
+
+        response = client.get(
+            "/auth/google/connect",
+            params={"token": token},
+            follow_redirects=False,
+        )
+
+    assert response.status_code in (302, 307)
+
+
 def test_callback_persists_encrypted_refresh_token_and_marks_connected(client, db_session):
     from models.user import User
 

@@ -8,6 +8,7 @@ from api.routes import (
     advisory,
     assets,
     auth,
+    categories,
     custom_rules,
     dashboard,
     google_drive,
@@ -62,6 +63,7 @@ app.include_router(reports.router)
 app.include_router(dashboard.router)
 app.include_router(advisory.router)
 app.include_router(assets.router)
+app.include_router(categories.router)
 
 @app.get("/")
 def read_root():
