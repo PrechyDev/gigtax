@@ -10,6 +10,7 @@ export interface UserProfile {
   tin: string | null
   has_home_office: boolean
   home_office_percentage: number
+  annual_rent_paid: number | null
   google_drive_connected: boolean
 }
 
@@ -40,6 +41,7 @@ export interface ProfileUpdateInput {
   tin?: string
   has_home_office?: boolean
   home_office_percentage?: number
+  annual_rent_paid?: number
 }
 
 export function register(input: RegisterInput) {

@@ -77,6 +77,7 @@ function ProfileTab() {
     tin: user?.tin ?? '',
     has_home_office: user?.has_home_office ?? false,
     home_office_percentage: user?.home_office_percentage ?? 0,
+    annual_rent_paid: user?.annual_rent_paid ?? '',
   })
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +95,10 @@ function ProfileTab() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSuccess(false)
-    mutation.mutate(form)
+    mutation.mutate({
+      ...form,
+      annual_rent_paid: form.annual_rent_paid === '' ? undefined : Number(form.annual_rent_paid),
+    })
   }
 
   return (
@@ -140,6 +144,18 @@ function ProfileTab() {
           maxLength={4}
           onChange={(e) => setForm({ ...form, tax_year: e.target.value })}
         />
+        <TextField
+          label="Annual Rent Paid (NGN)"
+          type="number"
+          min={0}
+          step="0.01"
+          value={form.annual_rent_paid}
+          onChange={(e) => setForm({ ...form, annual_rent_paid: e.target.value === '' ? '' : Number(e.target.value) })}
+        />
+        <p className="-mt-3 text-xs text-on-surface-variant">
+          Enter what you pay in rent per year. We'll automatically work out your rent relief — and, if you
+          claim a home office below, split off that portion as a business expense instead.
+        </p>
 
         <div className="rounded-lg border border-outline-variant p-4">
           <label className="flex items-center gap-2">
@@ -153,7 +169,7 @@ function ProfileTab() {
           {form.has_home_office && (
             <div className="mt-3">
               <label className="mb-1 block text-sm text-on-surface-variant">
-                {form.home_office_percentage}% of utility/rent expenses
+                {form.home_office_percentage}% of your rent counts as a home-office business expense
               </label>
               <input
                 type="range"
@@ -163,7 +179,9 @@ function ProfileTab() {
                 onChange={(e) => setForm({ ...form, home_office_percentage: Number(e.target.value) })}
                 className="w-full"
               />
-              <p className="mt-1 text-xs text-emerald-dark">Standard safe harbor is generally up to 20%.</p>
+              <p className="mt-1 text-xs text-emerald-dark">
+                The rest of your rent still counts toward your rent relief (20%, capped at ₦500,000).
+              </p>
             </div>
           )}
         </div>

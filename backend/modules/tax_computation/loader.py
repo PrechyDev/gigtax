@@ -9,15 +9,52 @@ from sqlalchemy.orm import Session
 from models.asset import Asset
 from models.category import Category
 from models.transaction import Transaction
+from models.user import User
 from modules.tax_computation.capital_allowances import CapitalAsset, total_capital_allowances
-from modules.tax_computation.engine import CategorizedTransaction
+from modules.tax_computation.engine import RENT_RELIEF_SLUG, CategorizedTransaction
+
+# Synthetic category for the home-office share of rent — not a real seeded Category
+# row (rent is a profile field, not a ledger transaction), so callers that display
+# category names need to special-case this slug. See _rent_categorized_transactions.
+RENT_HOME_OFFICE_SLUG = "rent_home_office_expense"
 
 
-def load_categorized_transactions(db: Session, user_id: UUID, tax_year: str) -> list[CategorizedTransaction]:
+def _rent_categorized_transactions(user: User) -> list[CategorizedTransaction]:
+    """Rent is a profile field, not a transaction — the user's home-office
+    percentage splits it at computation time rather than requiring them to
+    manually enter two separate ledger records. The home-office share becomes
+    a Business Expense; the remainder feeds the existing rent-relief handling
+    in engine.py (which itself applies the 20%/cap rule) unchanged.
+    """
+    if not user.annual_rent_paid or user.annual_rent_paid <= 0:
+        return []
+
+    home_office_share = user.annual_rent_paid * (user.home_office_percentage or 0.0) / 100.0
+    remainder = user.annual_rent_paid - home_office_share
+
+    synthesized = []
+    if home_office_share > 0:
+        synthesized.append(CategorizedTransaction(
+            amount=home_office_share,
+            classification="Expense",
+            category_slug=RENT_HOME_OFFICE_SLUG,
+            tax_treatment="100_percent_deductible_home_office",
+        ))
+    if remainder > 0:
+        synthesized.append(CategorizedTransaction(
+            amount=remainder,
+            classification="Relief",
+            category_slug=RENT_RELIEF_SLUG,
+            tax_treatment="deductible_relief_capped",
+        ))
+    return synthesized
+
+
+def load_categorized_transactions(db: Session, user: User, tax_year: str) -> list[CategorizedTransaction]:
     transactions = (
         db.query(Transaction)
         .filter(
-            Transaction.user_id == user_id,
+            Transaction.user_id == user.user_id,
             Transaction.review_status == "APPROVED",
             Transaction.date >= f"{tax_year}-01-01",
             Transaction.date <= f"{tax_year}-12-31T23:59:59",
@@ -42,6 +79,7 @@ def load_categorized_transactions(db: Session, user_id: UUID, tax_year: str) -> 
             tax_treatment=tx.tax_treatment,
             deductibility_percentage=getattr(tx, "deductibility_percentage", 100.0) or 100.0,
         ))
+    result.extend(_rent_categorized_transactions(user))
     return result
 
 

@@ -30,7 +30,7 @@ def compute_tax_for_year(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    transactions = load_categorized_transactions(db, current_user.user_id, tax_year)
+    transactions = load_categorized_transactions(db, current_user, tax_year)
     capital_allowances = load_capital_allowances_for_year(db, current_user.user_id, tax_year)
     result = compute_tax(transactions, capital_allowances_this_year=capital_allowances)
 

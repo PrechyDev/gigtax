@@ -18,6 +18,7 @@ class User(Base):
     tin = Column(String(20), nullable=True)  # Tax Identification Number
     has_home_office = Column(Boolean, default=False)
     home_office_percentage = Column(Float, default=0.0) # E.g., 20.0 for 20%
+    annual_rent_paid = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Google Drive BYOS (Bring Your Own Storage)

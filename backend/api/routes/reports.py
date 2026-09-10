@@ -45,7 +45,7 @@ def download_report(
     Google Drive is connected, also drops a copy there as a convenience log — but a
     failure in that optional step must never cost the user their PDF.
     """
-    transactions = load_categorized_transactions(db, current_user.user_id, tax_year)
+    transactions = load_categorized_transactions(db, current_user, tax_year)
     capital_allowances = load_capital_allowances_for_year(db, current_user.user_id, tax_year)
     result = compute_tax(transactions, capital_allowances_this_year=capital_allowances)
     pdf_bytes = build_report_pdf(current_user.name, tax_year, result)

@@ -78,13 +78,6 @@
   },
   {
     "classification": "Relief",
-    "category_name": "Residential Rent Relief",
-    "developer_slug": "relief_residential_rent",
-    "description": "NTA 2025 deduction allowance calculated as 20% of your annual physical rent payment.",
-    "tax_treatment": "deductible_relief_capped"
-  },
-  {
-    "classification": "Relief",
     "category_name": "Voluntary Pension (CPS)",
     "developer_slug": "relief_pension_voluntary",
     "description": "Contributions made personally into a registered Pension Fund Administrator (PFA).",

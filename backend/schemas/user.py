@@ -59,6 +59,7 @@ class UserUpdate(BaseModel):
     tin: str | None = Field(default=None, max_length=TIN_MAX_LENGTH)
     has_home_office: bool | None = None
     home_office_percentage: float | None = Field(default=None, ge=0, le=100)
+    annual_rent_paid: float | None = Field(default=None, ge=0)
 
     @field_validator("tax_year")
     @classmethod
@@ -76,6 +77,7 @@ class UserProfile(BaseModel):
     tin: str | None
     has_home_office: bool
     home_office_percentage: float
+    annual_rent_paid: float | None
     google_drive_connected: bool
 
     model_config = {"from_attributes": True}
