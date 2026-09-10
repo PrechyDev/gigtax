@@ -50,9 +50,9 @@ export function DashboardPage() {
             <p className="mt-1 text-3xl font-bold tabular-nums">{formatNaira(data.estimated_tax_owed)}</p>
           </div>
 
-          {data.outstanding_actions.length > 0 && (
-            <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6 shadow-level-1">
-              <h3 className="mb-3 font-semibold text-navy">Outstanding Actions</h3>
+          <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6 shadow-level-1">
+            <h3 className="mb-3 font-semibold text-navy">Outstanding Actions</h3>
+            {data.outstanding_actions.length > 0 ? (
               <ul className="space-y-2">
                 {data.outstanding_actions.map((action) => (
                   <li key={action} className="flex items-start gap-2 text-sm text-on-surface-variant">
@@ -61,8 +61,13 @@ export function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p className="flex items-center gap-2 text-sm text-emerald-dark">
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+                You're all caught up — nothing outstanding.
+              </p>
+            )}
+          </div>
 
           <p className="text-xs text-on-surface-variant">{data.filing_guidance}</p>
         </div>
