@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from core.logger import get_logger
 from db.session import get_db
 from models.statement import ParsingStatus, StatementUpload
 from models.user import User
@@ -13,9 +14,14 @@ from modules.ai_categorization.main import process_bank_statement
 from modules.ai_categorization.parsing import ParsingError, PasswordRequiredError
 from modules.ingestion.persistence import persist_parsed_transaction
 from modules.ingestion.prompt_context import build_custom_rules_text, build_predefined_categories_text
-from schemas.statement import StatementBatchResponse, StatementFileResult
+from schemas.statement import StatementBatchResponse, StatementFileResult, StatementListItem
 
 router = APIRouter(prefix="/statements", tags=["statements"])
+logger = get_logger("api.statements")
+
+AI_SERVICE_UNAVAILABLE_MESSAGE = (
+    "Our document processing service is temporarily unavailable. Please try again in a few minutes."
+)
 
 EXTENSION_TO_SOURCE_TYPE = {
     ".csv": "csv",
@@ -93,6 +99,20 @@ def _process_one_file(
             status=statement.parsing_status.value,
             error=str(e),
         )
+    except Exception:
+        # Most likely an exhausted/failed Gemini call (categorization) that isn't a
+        # ParsingError — never let the real exception (provider error text, status
+        # codes) reach the client; the user just needs to know this file didn't go
+        # through and can retry, not why in provider terms.
+        logger.exception(f"Unexpected failure processing statement file '{filename}'")
+        statement.parsing_status = ParsingStatus.FAILED
+        db.commit()
+        return StatementFileResult(
+            statement_id=statement.statement_id,
+            file_name=filename,
+            status=statement.parsing_status.value,
+            error=AI_SERVICE_UNAVAILABLE_MESSAGE,
+        )
 
 
 @router.post("", response_model=StatementBatchResponse, status_code=status.HTTP_201_CREATED)
@@ -127,6 +147,20 @@ def upload_statements(
         ))
 
     return StatementBatchResponse(results=results)
+
+
+@router.get("", response_model=list[StatementListItem])
+def list_statements(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Powers the ingestion page's recent-uploads/processing-queue list."""
+    return (
+        db.query(StatementUpload)
+        .filter(StatementUpload.user_id == current_user.user_id)
+        .order_by(StatementUpload.upload_date.desc())
+        .all()
+    )
 
 
 @router.post("/{statement_id}/retry", response_model=StatementFileResult)

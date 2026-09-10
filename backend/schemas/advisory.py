@@ -1,6 +1,15 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+
+class AdvisoryHistoryItem(BaseModel):
+    query_id: UUID
+    query_text: str
+    response_text: str
+    sources: list[str]
+    timestamp: datetime
 
 
 class AdvisoryQueryRequest(BaseModel):

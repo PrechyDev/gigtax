@@ -15,6 +15,7 @@ class User(Base):
     occupation_type = Column(String(50))
     state_residence = Column(String(50))
     tax_year = Column(String(4))
+    tin = Column(String(20), nullable=True)  # Tax Identification Number
     has_home_office = Column(Boolean, default=False)
     home_office_percentage = Column(Float, default=0.0) # E.g., 20.0 for 20%
     created_at = Column(DateTime(timezone=True), server_default=func.now())

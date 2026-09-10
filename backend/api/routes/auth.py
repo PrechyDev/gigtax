@@ -5,7 +5,7 @@ from api.deps import get_current_user
 from core.security import create_access_token, hash_password, verify_password
 from db.session import get_db
 from models.user import User
-from schemas.user import TokenResponse, UserLogin, UserProfile, UserRegister
+from schemas.user import TokenResponse, UserLogin, UserProfile, UserRegister, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -39,4 +39,18 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserProfile)
 def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserProfile)
+def update_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
     return current_user

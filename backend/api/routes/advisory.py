@@ -1,18 +1,25 @@
 import json
 import uuid
 from datetime import datetime, timezone
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from core.logger import get_logger
 from db.session import get_db
 from models.advisory import AIAdvisoryQuery
 from models.user import User
 from modules.advisory.rag_advisor import answer_question
-from schemas.advisory import AdvisoryQueryRequest, AdvisoryQueryResponse
+from schemas.advisory import AdvisoryHistoryItem, AdvisoryQueryRequest, AdvisoryQueryResponse
 
 router = APIRouter(prefix="/advisory", tags=["advisory"])
+logger = get_logger("api.advisory")
+
+AI_SERVICE_UNAVAILABLE_MESSAGE = (
+    "Our AI advisor is temporarily unavailable. Please try again in a few minutes."
+)
 
 # How many prior turns (each turn = one user question + one assistant answer) to
 # include as context — bounded rather than the whole conversation, so prompt size
@@ -46,7 +53,11 @@ def query_advisor(
     session_id = payload.session_id or uuid.uuid4()
     history = _load_conversation_history(db, current_user.user_id, session_id) if payload.session_id else []
 
-    result = answer_question(db, payload.question, conversation_history=history)
+    try:
+        result = answer_question(db, payload.question, conversation_history=history)
+    except Exception:
+        logger.exception("Advisory query failed (embedding/retrieval/generation)")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=AI_SERVICE_UNAVAILABLE_MESSAGE)
 
     log = AIAdvisoryQuery(
         user_id=current_user.user_id,
@@ -71,3 +82,30 @@ def query_advisor(
         answer=result.answer,
         sources=result.sources,
     )
+
+
+@router.get("/history", response_model=list[AdvisoryHistoryItem])
+def get_history(
+    session_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Restores a chat session's prior turns — lets the frontend reload a conversation
+    on page refresh instead of always starting blank.
+    """
+    turns = (
+        db.query(AIAdvisoryQuery)
+        .filter(AIAdvisoryQuery.user_id == current_user.user_id, AIAdvisoryQuery.session_id == session_id)
+        .order_by(AIAdvisoryQuery.timestamp.asc())
+        .all()
+    )
+    return [
+        AdvisoryHistoryItem(
+            query_id=turn.query_id,
+            query_text=turn.query_text,
+            response_text=turn.response_text,
+            sources=json.loads(turn.retrieved_sources) if turn.retrieved_sources else [],
+            timestamp=turn.timestamp,
+        )
+        for turn in turns
+    ]

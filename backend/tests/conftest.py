@@ -73,6 +73,10 @@ def client(db_session):
             pass
 
     app.dependency_overrides[get_db] = _override_get_db
-    with TestClient(app) as test_client:
+    # raise_server_exceptions=False: a real HTTP client never sees a raised Python
+    # exception, only the JSON response our global handler (main.py) produces — tests
+    # that exercise that handler need the same behavior, not pytest's default of
+    # re-raising server errors to surface bugs.
+    with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
     app.dependency_overrides.clear()

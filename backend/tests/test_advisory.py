@@ -173,3 +173,51 @@ def test_history_is_capped_to_the_most_recent_turns(mock_retrieve, mock_generate
     assert len(kwargs["history"]) == MAX_HISTORY_TURNS * 2  # user+assistant per turn
     # The oldest turns should have been dropped, not the most recent ones.
     assert "question 0" not in [m["content"] for m in kwargs["history"]]
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_get_history_returns_turns_in_order_with_sources(mock_retrieve, mock_generate_text, client):
+    mock_retrieve.return_value = [_fake_chunk()]
+    headers = _auth_header(client, "advisor-user10@example.com")
+
+    mock_generate_text.return_value = "first answer"
+    first = client.post("/advisory/query", json={"question": "first question"}, headers=headers)
+    session_id = first.json()["session_id"]
+
+    mock_generate_text.return_value = "second answer"
+    client.post("/advisory/query", json={"question": "second question", "session_id": session_id}, headers=headers)
+
+    response = client.get("/advisory/history", params={"session_id": session_id}, headers=headers)
+    assert response.status_code == 200
+    history = response.json()
+    assert len(history) == 2
+    assert history[0]["query_text"] == "first question"
+    assert history[1]["query_text"] == "second question"
+    assert history[0]["sources"] == ["Nigeria Tax Act 2025 (p.30)"]
+
+
+def test_get_history_for_unknown_session_is_empty_not_an_error(client):
+    headers = _auth_header(client, "advisor-user11@example.com")
+    response = client.get("/advisory/history", params={"session_id": "00000000-0000-0000-0000-000000000000"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_history_requires_auth(client):
+    response = client.get("/advisory/history", params={"session_id": "00000000-0000-0000-0000-000000000000"})
+    assert response.status_code == 401
+
+
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_advisor_failure_returns_friendly_503_not_a_raw_error(mock_retrieve, client):
+    # Simulates an exhausted/failed Gemini call bubbling up from deep inside the RAG
+    # pipeline — the client must never see the provider's own error text.
+    mock_retrieve.side_effect = RuntimeError("litellm.APIConnectionError: 429 quota exceeded")
+    headers = _auth_header(client, "advisor-user12@example.com")
+
+    response = client.post("/advisory/query", json={"question": "Anything?"}, headers=headers)
+
+    assert response.status_code == 503
+    assert "429" not in response.json()["detail"]
+    assert "temporarily unavailable" in response.json()["detail"]

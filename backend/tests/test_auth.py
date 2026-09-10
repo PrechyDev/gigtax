@@ -71,3 +71,47 @@ def test_me_returns_profile_with_valid_token(client):
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert response.json()["email"] == "profile@example.com"
+
+
+def _register_and_get_headers(client, email="update-user@example.com"):
+    response = client.post("/auth/register", json={
+        "name": "Update User", "email": email, "password": "supersecret123",
+    })
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_patch_me_updates_only_supplied_fields(client):
+    headers = _register_and_get_headers(client)
+
+    response = client.patch("/auth/me", json={
+        "occupation_type": "content creator",
+        "tin": "12345678-0001",
+        "has_home_office": True,
+        "home_office_percentage": 25.0,
+    }, headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Update User"  # untouched
+    assert body["occupation_type"] == "content creator"
+    assert body["tin"] == "12345678-0001"
+    assert body["has_home_office"] is True
+    assert body["home_office_percentage"] == 25.0
+
+
+def test_patch_me_rejects_invalid_tax_year(client):
+    headers = _register_and_get_headers(client, "update-user2@example.com")
+    response = client.patch("/auth/me", json={"tax_year": "abcd"}, headers=headers)
+    assert response.status_code == 422
+
+
+def test_patch_me_rejects_home_office_percentage_out_of_range(client):
+    headers = _register_and_get_headers(client, "update-user3@example.com")
+    response = client.patch("/auth/me", json={"home_office_percentage": 150}, headers=headers)
+    assert response.status_code == 422
+
+
+def test_patch_me_requires_auth(client):
+    response = client.patch("/auth/me", json={"name": "Nope"})
+    assert response.status_code == 401

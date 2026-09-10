@@ -62,6 +62,32 @@ def test_upload_receipt_succeeds_when_drive_connected(mock_drive_service_cls, cl
     assert len(listing.json()) == 1
 
 
+@patch("api.routes.receipts.DriveService")
+def test_upload_receipt_drive_failure_returns_friendly_503(mock_drive_service_cls, client, db_session):
+    from models.user import User
+
+    headers = _auth_header(client, "receipt-user3@example.com")
+    transaction_id = _create_transaction(client, headers)
+
+    user = db_session.query(User).filter(User.email == "receipt-user3@example.com").first()
+    user.google_drive_connected = True
+    user.google_drive_folder_id = "fake-folder-id"
+    user.google_refresh_token_encrypted = "fake-encrypted-token"
+    db_session.commit()
+
+    mock_drive_service_cls.return_value.upload.side_effect = RuntimeError("googleapiclient.errors.HttpError: 500")
+
+    response = client.post(
+        f"/transactions/{transaction_id}/receipts",
+        files={"file": ("receipt.jpg", io.BytesIO(b"fake-image-bytes"), "image/jpeg")},
+        headers=headers,
+    )
+
+    assert response.status_code == 503
+    assert "HttpError" not in response.json()["detail"]
+    assert "Google Drive" in response.json()["detail"]
+
+
 def test_receipts_scoped_to_owning_user(client):
     headers_a = _auth_header(client, "receipt-a@example.com")
     headers_b = _auth_header(client, "receipt-b@example.com")

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from core.logger import get_logger
 from db.session import get_db
 from models.receipt import Receipt
 from models.transaction import Transaction
@@ -12,6 +13,9 @@ from schemas.receipt import ReceiptOut
 from services.drive_service import DriveService
 
 router = APIRouter(prefix="/transactions/{transaction_id}/receipts", tags=["receipts"])
+logger = get_logger("api.receipts")
+
+DRIVE_UNAVAILABLE_MESSAGE = "Couldn't reach Google Drive right now. Please try again shortly."
 
 
 def _get_owned_transaction(db: Session, transaction_id: UUID, current_user: User) -> Transaction:
@@ -41,13 +45,17 @@ def upload_receipt(
         )
 
     file_bytes = file.file.read()
-    drive_service = DriveService(current_user)
-    file_id = drive_service.upload(
-        file_bytes=file_bytes,
-        filename=file.filename,
-        mime_type=file.content_type or "application/octet-stream",
-        folder_id=current_user.google_drive_folder_id,
-    )
+    try:
+        drive_service = DriveService(current_user)
+        file_id = drive_service.upload(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            mime_type=file.content_type or "application/octet-stream",
+            folder_id=current_user.google_drive_folder_id,
+        )
+    except Exception:
+        logger.exception(f"Drive upload failed for transaction {transaction_id}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=DRIVE_UNAVAILABLE_MESSAGE)
 
     receipt = Receipt(
         transaction_id=transaction.transaction_id,
