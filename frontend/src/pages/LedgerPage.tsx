@@ -7,6 +7,7 @@ import {
   listTransactions,
   reviewTransaction,
   type Transaction,
+  type TransactionFilters,
   type TransactionReviewInput,
 } from '../api/transactions'
 import { listReceipts, uploadReceipt } from '../api/receipts'
@@ -22,17 +23,33 @@ import { formatDate, formatNaira } from '../lib/formatters'
 
 const LOW_CONFIDENCE_THRESHOLD = 0.6
 
+type LedgerTab = 'all' | 'pending' | 'income' | 'expense'
+
+const LEDGER_TABS: { id: LedgerTab; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'pending', label: 'Pending Review' },
+  { id: 'income', label: 'Income' },
+  { id: 'expense', label: 'Expenses' },
+]
+
+function filtersForTab(tab: LedgerTab): TransactionFilters {
+  if (tab === 'pending') return { review_status: 'PENDING' }
+  if (tab === 'income') return { transaction_type: 'income' }
+  if (tab === 'expense') return { transaction_type: 'expense' }
+  return {}
+}
+
 export function LedgerPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [tab, setTab] = useState<LedgerTab>('all')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', statusFilter],
-    queryFn: () => listTransactions(statusFilter ? { review_status: statusFilter } : {}),
+    queryKey: ['transactions', tab],
+    queryFn: () => listTransactions(filtersForTab(tab)),
   })
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
 
@@ -73,6 +90,26 @@ export function LedgerPage() {
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not delete the selected transactions.'),
   })
 
+  const deleteOneMutation = useMutation({
+    mutationFn: (id: string) => deleteTransaction(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not delete this transaction.'),
+  })
+
+  function handleDeleteOne(transaction: Transaction) {
+    if (
+      window.confirm(
+        `Delete "${transaction.description}"? Any linked capital asset will be removed too. This cannot be undone.`,
+      )
+    ) {
+      deleteOneMutation.mutate(transaction.transaction_id)
+    }
+  }
+
   function categoryFor(transaction: Transaction) {
     const id = transaction.user_category_id ?? transaction.ai_category_id
     return categoriesQuery.data?.find((c) => c.category_id === id)
@@ -109,19 +146,24 @@ export function LedgerPage() {
     <AppShell title="Ledger Review">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-on-surface-variant">Review and confirm AI-categorized transactions.</p>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value)
-            setSelectedIds(new Set())
-          }}
-          className="h-10 rounded-lg border border-outline-variant bg-white px-3 text-sm"
-        >
-          <option value="">All statuses</option>
-          <option value="PENDING">Pending review</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+        <div className="flex gap-1 rounded-lg bg-surface-container-low p-1">
+          {LEDGER_TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setTab(t.id)
+                setSelectedIds(new Set())
+              }}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                tab === t.id
+                  ? 'bg-surface-container-lowest text-blue-dark shadow-level-1'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (
@@ -182,6 +224,7 @@ export function LedgerPage() {
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Receipt</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -198,7 +241,9 @@ export function LedgerPage() {
                   onCreateRule={(pattern, categorySlug) =>
                     createRuleMutation.mutate({ keyword_pattern: pattern, assigned_category: categorySlug })
                   }
+                  onDelete={() => handleDeleteOne(transaction)}
                   isSaving={reviewMutation.isPending}
+                  isDeleting={deleteOneMutation.isPending}
                 />
               ))}
             </tbody>
@@ -217,7 +262,9 @@ function TransactionRow({
   onToggleSelect,
   onReview,
   onCreateRule,
+  onDelete,
   isSaving,
+  isDeleting,
 }: {
   transaction: Transaction
   category?: { developer_slug: string; category_name: string }
@@ -227,7 +274,9 @@ function TransactionRow({
   onToggleSelect: () => void
   onReview: (input: TransactionReviewInput) => void
   onCreateRule: (pattern: string, categorySlug: string) => void
+  onDelete: () => void
   isSaving: boolean
+  isDeleting: boolean
 }) {
   const [receiptsOpen, setReceiptsOpen] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
@@ -275,11 +324,12 @@ function TransactionRow({
             />
           ) : (
             <button
-              className="text-left hover:underline"
+              className="flex items-center gap-1.5 text-left hover:underline"
               onClick={() => setIsEditingDescription(true)}
-              title="Click to rename"
+              title="Rename"
             >
               {transaction.description}
+              <span className="material-symbols-outlined shrink-0 text-sm text-on-surface-variant">edit</span>
             </button>
           )}
           <p className="text-xs text-on-surface-variant">{transaction.source}</p>
@@ -318,6 +368,9 @@ function TransactionRow({
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <StatusPill label={transaction.review_status} tone={reviewStatusTone(transaction.review_status)} />
+            {isSaving && <Spinner size={14} />}
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-xs">
             {transaction.review_status !== 'APPROVED' && (
               <button
                 disabled={isSaving}
@@ -327,7 +380,15 @@ function TransactionRow({
                 Approve
               </button>
             )}
-            {isSaving && <Spinner size={14} />}
+            {transaction.review_status !== 'REJECTED' && (
+              <button
+                disabled={isSaving}
+                onClick={() => onReview({ review_status: 'REJECTED' })}
+                className="text-on-surface-variant hover:underline disabled:opacity-50"
+              >
+                Reject
+              </button>
+            )}
           </div>
           {category && (
             <button
@@ -353,10 +414,21 @@ function TransactionRow({
             <span className="text-on-surface-variant">N/A</span>
           )}
         </td>
+        <td className="px-4 py-3">
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            aria-label="Delete transaction"
+            title="Delete"
+            className="text-on-surface-variant hover:text-error disabled:opacity-50"
+          >
+            {isDeleting ? <Spinner size={16} /> : <span className="material-symbols-outlined text-lg">delete</span>}
+          </button>
+        </td>
       </tr>
       {receiptsOpen && (
         <tr>
-          <td colSpan={7} className="bg-surface-container-low px-4 py-3">
+          <td colSpan={8} className="bg-surface-container-low px-4 py-3">
             <ReceiptsPanel transactionId={transaction.transaction_id} />
           </td>
         </tr>
