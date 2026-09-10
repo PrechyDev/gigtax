@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from api.deps import get_current_user
 from db.session import get_db
@@ -67,7 +67,11 @@ def list_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Transaction).filter(Transaction.user_id == current_user.user_id)
+    query = (
+        db.query(Transaction)
+        .options(joinedload(Transaction.statement))
+        .filter(Transaction.user_id == current_user.user_id)
+    )
     if review_status:
         query = query.filter(Transaction.review_status == review_status.upper())
     if transaction_type:
@@ -107,6 +111,27 @@ def review_transaction(
     if payload.review_status is not None:
         transaction.review_status = payload.review_status
 
+    if payload.description is not None:
+        transaction.description = payload.description
+
     db.commit()
     db.refresh(transaction)
     return transaction
+
+
+@router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_transaction(
+    transaction_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    transaction = (
+        db.query(Transaction)
+        .filter(Transaction.transaction_id == transaction_id, Transaction.user_id == current_user.user_id)
+        .first()
+    )
+    if transaction is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+    db.delete(transaction)
+    db.commit()

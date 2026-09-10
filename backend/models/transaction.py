@@ -33,6 +33,14 @@ class Transaction(Base):
     receipts = relationship("Receipt", back_populates="transaction", cascade="all, delete-orphan")
     statement = relationship("StatementUpload", back_populates="transactions")
 
+    @property
+    def source(self) -> str:
+        """Displayed in the ledger so a user can tell a manually-typed record apart
+        from one that came out of an uploaded statement. Eager-load `statement` (see
+        list_transactions) to avoid an N+1 query per row.
+        """
+        return self.statement.file_name if self.statement_id and self.statement else "Manual Entry"
+
 
 class IncomeRecord(Transaction):
     __mapper_args__ = {

@@ -27,6 +27,7 @@ class ManualTransactionCreate(BaseModel):
 class TransactionReviewUpdate(BaseModel):
     review_status: str | None = None  # "APPROVED" | "REJECTED"
     category_slug: str | None = None  # corrects user_category_id when provided
+    description: str | None = Field(default=None, max_length=500)
 
     @field_validator("review_status")
     @classmethod
@@ -49,5 +50,6 @@ class TransactionOut(BaseModel):
     confidence_score: float | None
     review_status: str
     tax_treatment: str | None
+    source: str
 
     model_config = {"from_attributes": True}

@@ -13,6 +13,7 @@ export interface Transaction {
   confidence_score: number | null
   review_status: 'PENDING' | 'APPROVED' | 'REJECTED'
   tax_treatment: string | null
+  source: string
 }
 
 export interface ManualTransactionInput {
@@ -29,6 +30,7 @@ export interface ManualTransactionInput {
 export interface TransactionReviewInput {
   review_status?: 'APPROVED' | 'REJECTED' | 'PENDING'
   category_slug?: string
+  description?: string
 }
 
 export interface TransactionFilters {
@@ -48,4 +50,8 @@ export function createManualTransaction(input: ManualTransactionInput) {
 
 export function reviewTransaction(transactionId: string, input: TransactionReviewInput) {
   return apiFetch<Transaction>(`/transactions/${transactionId}`, { method: 'PATCH', body: input })
+}
+
+export function deleteTransaction(transactionId: string) {
+  return apiFetch<void>(`/transactions/${transactionId}`, { method: 'DELETE' })
 }

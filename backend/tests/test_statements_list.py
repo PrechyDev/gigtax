@@ -44,6 +44,9 @@ def test_list_statements_reflects_uploaded_files_and_transaction_count(mock_proc
     assert items[0]["source_type"] == "csv"
     assert items[0]["transactions_created"] == 1
 
+    transactions = client.get("/transactions", headers=headers).json()
+    assert transactions[0]["source"] == "statement.csv"
+
 
 def test_list_statements_scoped_to_owning_user(client, run_background_inline):
     headers_a = _auth_header(client, "stmt-list-a@example.com")

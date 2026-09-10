@@ -77,3 +77,69 @@ def test_patch_transaction_approves_and_recategorizes(client):
 def test_transactions_require_auth(client):
     response = client.get("/transactions")
     assert response.status_code == 401
+
+
+def test_patch_transaction_updates_description(client):
+    headers = _auth_header(client, "tx-user5@example.com")
+    create_response = client.post("/transactions", json={
+        "transaction_type": "expense",
+        "date": "2026-02-01T00:00:00Z",
+        "description": "Vague description",
+        "amount": 3000,
+    }, headers=headers)
+    transaction_id = create_response.json()["transaction_id"]
+
+    patch_response = client.patch(f"/transactions/{transaction_id}", json={
+        "description": "Adobe Creative Cloud subscription",
+    }, headers=headers)
+
+    assert patch_response.status_code == 200
+    assert patch_response.json()["description"] == "Adobe Creative Cloud subscription"
+
+
+def test_manual_transaction_source_is_manual_entry(client):
+    headers = _auth_header(client, "tx-user6@example.com")
+    response = client.post("/transactions", json={
+        "transaction_type": "income",
+        "date": "2026-02-01T00:00:00Z",
+        "description": "Gig payment",
+        "amount": 20000,
+    }, headers=headers)
+    assert response.json()["source"] == "Manual Entry"
+
+
+def test_delete_transaction_removes_it(client):
+    headers = _auth_header(client, "tx-user7@example.com")
+    create_response = client.post("/transactions", json={
+        "transaction_type": "expense",
+        "date": "2026-02-01T00:00:00Z",
+        "description": "Some tool",
+        "amount": 3000,
+    }, headers=headers)
+    transaction_id = create_response.json()["transaction_id"]
+
+    delete_response = client.delete(f"/transactions/{transaction_id}", headers=headers)
+    assert delete_response.status_code == 204
+
+    list_response = client.get("/transactions", headers=headers)
+    assert list_response.json() == []
+
+
+def test_delete_transaction_requires_ownership(client):
+    headers_a = _auth_header(client, "tx-user8@example.com")
+    headers_b = _auth_header(client, "tx-user9@example.com")
+    create_response = client.post("/transactions", json={
+        "transaction_type": "expense",
+        "date": "2026-02-01T00:00:00Z",
+        "description": "Some tool",
+        "amount": 3000,
+    }, headers=headers_a)
+    transaction_id = create_response.json()["transaction_id"]
+
+    delete_response = client.delete(f"/transactions/{transaction_id}", headers=headers_b)
+    assert delete_response.status_code == 404
+
+
+def test_delete_transaction_requires_auth(client):
+    response = client.delete("/transactions/00000000-0000-0000-0000-000000000000")
+    assert response.status_code == 401
