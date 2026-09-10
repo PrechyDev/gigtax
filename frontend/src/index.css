@@ -68,3 +68,41 @@ body {
 .material-symbols-outlined.fill {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
+
+/* Renders the AI advisor's markdown responses (Gemini naturally outputs **bold**,
+   bullet lists, etc.) — without this they arrived as literal, unrendered markdown
+   syntax in the chat bubble. Scoped narrowly rather than pulling in the full
+   Tailwind typography plugin for one chat bubble's worth of elements. */
+.markdown-content p {
+  margin: 0 0 0.5em;
+}
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0 0 0.5em;
+  padding-left: 1.25em;
+}
+.markdown-content ul {
+  list-style: disc;
+}
+.markdown-content ol {
+  list-style: decimal;
+}
+.markdown-content li {
+  margin-bottom: 0.15em;
+}
+.markdown-content strong {
+  font-weight: 600;
+}
+.markdown-content a {
+  color: var(--color-blue);
+  text-decoration: underline;
+}
+.markdown-content code {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 0.25em;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import ReactMarkdown from 'react-markdown'
 import { getAdvisoryHistory, queryAdvisor } from '../api/advisory'
 import { AppShell } from '../components/layout/AppShell'
 import { ErrorBanner } from '../components/ui/Banner'
@@ -111,7 +112,13 @@ export function AdvisorPage() {
                   message.role === 'user' ? 'bg-navy text-white' : 'bg-surface-container text-on-surface'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                {message.role === 'assistant' ? (
+                  <div className="markdown-content">
+                    <ReactMarkdown>{message.text}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{message.text}</p>
+                )}
                 {message.sources && message.sources.length > 0 && (
                   <p className="mt-2 text-xs opacity-70">Sources: {message.sources.join(', ')}</p>
                 )}
