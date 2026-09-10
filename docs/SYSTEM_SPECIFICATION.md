@@ -124,6 +124,14 @@ categorization).
   schema change, ever.
 - No ANN index (ivfflat/HNSW) — exact cosine search is fast enough at this corpus size (one Act's
   worth of chunks); add one only if the knowledge base grows much larger.
+- **Multi-turn memory, scoped to one chat session.** Gemini has no server-side conversation memory of
+  its own — its "chat" abstraction is just resending prior turns as message history each call — so
+  that's what's built: a client-held `session_id` (issued on the first message, passed back on every
+  follow-up in the same chat) groups turns in `AIAdvisoryQuery`; the last few turns are loaded and
+  passed as real message history, not a summarized recap. A bare follow-up ("is it capped?") also has
+  its retrieval query enriched with the last couple of user turns' text, since otherwise it has no
+  keywords of its own to embed well and retrieval silently drifts off-topic. Omitting `session_id`
+  (or using a new one) starts a conversation with no memory of any other session.
 
 ### 3.7 Reporting & Filing Guidance
 - Generate a downloadable self-assessment report: income summary, deductions, reliefs, stage-by-stage

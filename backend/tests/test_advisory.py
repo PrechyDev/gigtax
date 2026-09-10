@@ -76,3 +76,100 @@ def test_advisory_rejects_empty_question(client):
     headers = _auth_header(client, "advisor-user4@example.com")
     response = client.post("/advisory/query", json={"question": ""}, headers=headers)
     assert response.status_code == 422
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_bare_follow_up_retrieval_is_grounded_by_prior_question(mock_retrieve, mock_generate_text, client):
+    # Regression test: "is it capped?" alone has no keywords to retrieve well against —
+    # the prior turn's topic must be folded into what gets embedded for retrieval.
+    mock_retrieve.return_value = [_fake_chunk()]
+    headers = _auth_header(client, "advisor-user9@example.com")
+
+    mock_generate_text.return_value = "Rent relief is 20%, capped at N500,000."
+    first = client.post("/advisory/query", json={"question": "How much rent relief can I claim?"}, headers=headers)
+    session_id = first.json()["session_id"]
+
+    mock_generate_text.return_value = "Yes, capped at N500,000."
+    client.post("/advisory/query", json={"question": "Is it capped?", "session_id": session_id}, headers=headers)
+
+    retrieval_query = mock_retrieve.call_args.args[1]
+    assert "How much rent relief can I claim?" in retrieval_query
+    assert "Is it capped?" in retrieval_query
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_first_message_gets_a_new_session_id_and_no_history(mock_retrieve, mock_generate_text, client):
+    mock_retrieve.return_value = [_fake_chunk()]
+    mock_generate_text.return_value = "some answer"
+    headers = _auth_header(client, "advisor-user5@example.com")
+
+    response = client.post("/advisory/query", json={"question": "First question"}, headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["session_id"]  # a session_id is always issued
+    kwargs = mock_generate_text.call_args.kwargs
+    assert kwargs["history"] == []
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_follow_up_in_the_same_session_includes_prior_turn_as_history(mock_retrieve, mock_generate_text, client):
+    mock_retrieve.return_value = [_fake_chunk()]
+    headers = _auth_header(client, "advisor-user6@example.com")
+
+    mock_generate_text.return_value = "Rent relief is 20% capped at N500,000."
+    first = client.post("/advisory/query", json={"question": "How much rent relief can I claim?"}, headers=headers)
+    session_id = first.json()["session_id"]
+
+    mock_generate_text.return_value = "It's calculated on your annual rent paid."
+    client.post("/advisory/query", json={
+        "question": "How is that calculated?",
+        "session_id": session_id,
+    }, headers=headers)
+
+    kwargs = mock_generate_text.call_args.kwargs
+    assert kwargs["history"] == [
+        {"role": "user", "content": "How much rent relief can I claim?"},
+        {"role": "assistant", "content": "Rent relief is 20% capped at N500,000."},
+    ]
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_a_different_session_has_no_memory_of_another_ones_turns(mock_retrieve, mock_generate_text, client):
+    mock_retrieve.return_value = [_fake_chunk()]
+    headers = _auth_header(client, "advisor-user7@example.com")
+
+    mock_generate_text.return_value = "answer one"
+    client.post("/advisory/query", json={"question": "Question in session A"}, headers=headers)
+
+    mock_generate_text.return_value = "answer two"
+    client.post("/advisory/query", json={"question": "Question in session B, no session_id given"}, headers=headers)
+
+    kwargs = mock_generate_text.call_args.kwargs
+    assert kwargs["history"] == []  # brand new session — no leakage from session A
+
+
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_history_is_capped_to_the_most_recent_turns(mock_retrieve, mock_generate_text, client):
+    from api.routes.advisory import MAX_HISTORY_TURNS
+
+    mock_retrieve.return_value = [_fake_chunk()]
+    headers = _auth_header(client, "advisor-user8@example.com")
+
+    session_id = None
+    for i in range(MAX_HISTORY_TURNS + 3):
+        mock_generate_text.return_value = f"answer {i}"
+        payload = {"question": f"question {i}"}
+        if session_id:
+            payload["session_id"] = session_id
+        response = client.post("/advisory/query", json=payload, headers=headers)
+        session_id = response.json()["session_id"]
+
+    kwargs = mock_generate_text.call_args.kwargs
+    assert len(kwargs["history"]) == MAX_HISTORY_TURNS * 2  # user+assistant per turn
+    # The oldest turns should have been dropped, not the most recent ones.
+    assert "question 0" not in [m["content"] for m in kwargs["history"]]

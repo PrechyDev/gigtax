@@ -103,14 +103,28 @@ class LLMService:
         )
         return response.choices[0].message.content
 
-    def generate_text(self, prompt: str, system_prompt: Optional[str] = None, model: Optional[str] = None) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        history: Optional[list[dict]] = None,
+        model: Optional[str] = None,
+    ) -> str:
         """
         Standard text completion for generic conversational or RAG tasks.
+
+        `history` is prior turns as [{"role": "user"/"assistant", "content": "..."}],
+        oldest first — this is Gemini's actual multi-turn mechanism (there's no
+        server-side conversation memory; its own "chat session" abstraction just
+        resends prior turns like this on every call), so passing it straight through
+        is the "built-in" way rather than something built alongside it.
         """
         target_model = model or self.default_text_model
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+        if history:
+            messages.extend(history)
         messages.append({"role": "user", "content": prompt})
 
         response = self._execute_with_fallbacks(

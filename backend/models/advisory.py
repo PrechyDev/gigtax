@@ -9,6 +9,9 @@ class AIAdvisoryQuery(Base):
 
     query_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    # Groups turns into one conversation — the client generates/keeps this per chat
+    # session and passes it back on each follow-up; see api/routes/advisory.py.
+    session_id = Column(UUID(as_uuid=True), nullable=False, index=True, default=uuid.uuid4)
     query_text = Column(String(1000), nullable=False)
     response_text = Column(String(5000), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
