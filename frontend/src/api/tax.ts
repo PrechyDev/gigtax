@@ -6,6 +6,11 @@ export interface BandBreakdownItem {
   tax: number
 }
 
+export interface CategoryAmountItem {
+  category_name: string
+  amount: number
+}
+
 export interface TaxComputation {
   tax_year: string
   total_income: number
@@ -16,6 +21,10 @@ export interface TaxComputation {
   estimated_tax_owed: number
   minimum_wage_exempt: boolean
   band_breakdown: BandBreakdownItem[]
+  income_items: CategoryAmountItem[]
+  deduction_items: CategoryAmountItem[]
+  relief_items: CategoryAmountItem[]
+  capital_allowance_items: CategoryAmountItem[]
   last_updated: string | null
 }
 

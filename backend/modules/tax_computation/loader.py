@@ -10,13 +10,22 @@ from models.asset import Asset
 from models.category import Category
 from models.transaction import Transaction
 from models.user import User
-from modules.tax_computation.capital_allowances import CapitalAsset, total_capital_allowances
+from modules.tax_computation.capital_allowances import CapitalAsset, allowance_for_year, total_capital_allowances
 from modules.tax_computation.engine import RENT_RELIEF_SLUG, CategorizedTransaction
 
 # Synthetic category for the home-office share of rent — not a real seeded Category
 # row (rent is a profile field, not a ledger transaction), so callers that display
 # category names need to special-case this slug. See _rent_categorized_transactions.
 RENT_HOME_OFFICE_SLUG = "rent_home_office_expense"
+
+# Display names for slugs that don't correspond to a seeded Category row — the two
+# rent-derived synthetic entries above, plus relief_residential_rent itself, which
+# was retired from seed data (see db/seed_data/categories.json) now that rent is a
+# profile field rather than a manually-selectable category.
+SYNTHETIC_CATEGORY_LABELS: dict[str, str] = {
+    RENT_HOME_OFFICE_SLUG: "Rent (Home Office Portion)",
+    RENT_RELIEF_SLUG: "Rent Relief",
+}
 
 
 def _rent_categorized_transactions(user: User) -> list[CategorizedTransaction]:
@@ -101,3 +110,26 @@ def load_capital_allowances_for_year(db: Session, user_id: UUID, tax_year: str) 
         for asset in assets
     ]
     return total_capital_allowances(capital_assets, int(tax_year))
+
+
+def load_capital_allowance_items(db: Session, user_id: UUID, tax_year: str) -> list[dict]:
+    """Per-asset breakdown for report itemization — mirrors
+    load_capital_allowances_for_year's query, but keeps each asset's own allowance
+    instead of summing them, and drops assets with nothing to claim this year
+    (not yet owned, disposed of, or fully written down).
+    """
+    assets = db.query(Asset).filter(Asset.user_id == user_id).all()
+    tax_year_int = int(tax_year)
+
+    items = []
+    for asset in assets:
+        capital_asset = CapitalAsset(
+            cost=asset.cost,
+            asset_class=asset.asset_class,
+            acquired_year=asset.purchase_date.year,
+            disposed_year=asset.disposed_date.year if (asset.disposed and asset.disposed_date) else None,
+        )
+        amount = allowance_for_year(capital_asset, tax_year_int)
+        if amount > 0:
+            items.append({"category_name": asset.description, "amount": amount})
+    return items

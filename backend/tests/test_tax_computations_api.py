@@ -71,3 +71,30 @@ def test_pending_transactions_are_excluded_from_computation(client):
 
     response = client.post("/tax-computations/2026/compute", headers=headers)
     assert response.json()["total_income"] == 0
+
+
+def test_compute_returns_itemized_breakdown_by_category(client):
+    headers = _auth_header(client, "tax-api-user6@example.com")
+    _approved_income(client, headers, 2_000_000)
+    client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "Adobe subscription", "amount": 50_000,
+        "category_slug": "exp_software_subscriptions",
+    }, headers=headers)
+
+    response = client.post("/tax-computations/2026/compute", headers=headers)
+    body = response.json()
+
+    assert body["income_items"] == [{"category_name": "Professional Gig Fees", "amount": 2_000_000}]
+    assert body["deduction_items"] == [{"category_name": "Software & Subscriptions", "amount": 50_000}]
+    assert body["relief_items"] == []
+    assert body["capital_allowance_items"] == []
+
+
+def test_get_returns_the_same_itemized_breakdown_computed_earlier(client):
+    headers = _auth_header(client, "tax-api-user7@example.com")
+    _approved_income(client, headers, 2_000_000)
+    client.post("/tax-computations/2026/compute", headers=headers)
+
+    response = client.get("/tax-computations/2026", headers=headers)
+    assert response.json()["income_items"] == [{"category_name": "Professional Gig Fees", "amount": 2_000_000}]

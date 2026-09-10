@@ -52,6 +52,21 @@ def test_rent_splits_between_home_office_expense_and_relief(client):
     assert body["total_reliefs"] == 150_000
 
 
+def test_rent_split_appears_in_itemized_breakdown(client):
+    headers = _auth_header(client, "rent-user4@example.com")
+    client.patch("/auth/me", json={
+        "annual_rent_paid": 1_000_000,
+        "has_home_office": True,
+        "home_office_percentage": 25,
+    }, headers=headers)
+    _approved_income(client, headers, 5_000_000)
+
+    response = client.post("/tax-computations/2026/compute", headers=headers)
+    body = response.json()
+    assert body["deduction_items"] == [{"category_name": "Rent (Home Office Portion)", "amount": 250_000}]
+    assert body["relief_items"] == [{"category_name": "Rent Relief", "amount": 150_000}]
+
+
 def test_no_rent_paid_produces_no_synthesized_entries(client):
     headers = _auth_header(client, "rent-user3@example.com")
     _approved_income(client, headers, 5_000_000)

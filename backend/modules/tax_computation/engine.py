@@ -68,7 +68,7 @@ class TaxComputationResult:
     band_breakdown: list[BandResult] = field(default_factory=list)
 
 
-def _rent_relief_amount(annual_rent_paid: float) -> float:
+def rent_relief_amount(annual_rent_paid: float) -> float:
     return min(RENT_RELIEF_RATE * annual_rent_paid, RENT_RELIEF_CAP)
 
 
@@ -114,7 +114,7 @@ def compute_tax(
             total_deductions += tx.amount * (tx.deductibility_percentage / 100.0)
         elif tx.classification == "Relief":
             if tx.category_slug == RENT_RELIEF_SLUG:
-                total_reliefs += _rent_relief_amount(tx.amount)
+                total_reliefs += rent_relief_amount(tx.amount)
             else:
                 total_reliefs += tx.amount
         # "Asset"-classified rows and "Unknown"-classified (uncategorized/needs-review)

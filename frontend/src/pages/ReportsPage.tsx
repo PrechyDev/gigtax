@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { computeTax, downloadReport, getTaxComputation } from '../api/tax'
+import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
@@ -97,18 +97,34 @@ export function ReportsPage() {
       {computationQuery.data && (
         <div className="space-y-6">
           {computationQuery.data.minimum_wage_exempt && (
-            <div className="rounded-lg bg-emerald/10 p-4 text-emerald-dark">
-              Total income is at or below the National Minimum Wage — fully exempt under NTA 2025.
+            <div className="flex items-center gap-3 rounded-lg bg-emerald/10 p-4 text-emerald-dark">
+              <span className="material-symbols-outlined shrink-0">verified</span>
+              Total income is at or below the National Minimum Wage — fully exempt from tax this year.
             </div>
           )}
 
-          <div className="rounded-lg bg-surface-container-lowest shadow-level-1">
-            <SummaryRow label="Total Income (s.28)" value={computationQuery.data.total_income} />
-            <SummaryRow label="Allowable Deductions (ss.20-21)" value={-computationQuery.data.total_deductions} />
-            <SummaryRow label="Capital Allowances (First Schedule)" value={-computationQuery.data.total_capital_allowances} />
-            <SummaryRow label="Statutory Reliefs (s.30)" value={-computationQuery.data.total_reliefs} />
-            <SummaryRow label="Chargeable Income" value={computationQuery.data.taxable_income} bold />
-            <SummaryRow label="Net Tax Payable (Fourth Schedule)" value={computationQuery.data.estimated_tax_owed} bold last />
+          <div className="overflow-hidden rounded-lg bg-surface-container-lowest shadow-level-1">
+            <h3 className="border-b border-outline-variant bg-navy px-6 py-3 text-sm font-semibold text-white">
+              Tax Summary
+            </h3>
+            <BreakdownRow label="Total Income" value={computationQuery.data.total_income} items={computationQuery.data.income_items} />
+            <BreakdownRow
+              label="Allowable Deductions"
+              value={-computationQuery.data.total_deductions}
+              items={computationQuery.data.deduction_items}
+            />
+            <BreakdownRow
+              label="Capital Allowances"
+              value={-computationQuery.data.total_capital_allowances}
+              items={computationQuery.data.capital_allowance_items}
+            />
+            <BreakdownRow
+              label="Statutory Reliefs"
+              value={-computationQuery.data.total_reliefs}
+              items={computationQuery.data.relief_items}
+            />
+            <SummaryRow label="Taxable Income" value={computationQuery.data.taxable_income} bold />
+            <SummaryRow label="Net Tax Payable" value={computationQuery.data.estimated_tax_owed} bold last highlight />
           </div>
 
           {computationQuery.data.band_breakdown.length > 0 && (
@@ -146,11 +162,57 @@ export function ReportsPage() {
   )
 }
 
-function SummaryRow({ label, value, bold, last }: { label: string; value: number; bold?: boolean; last?: boolean }) {
+function SummaryRow({
+  label,
+  value,
+  bold,
+  last,
+  highlight,
+}: {
+  label: string
+  value: number
+  bold?: boolean
+  last?: boolean
+  highlight?: boolean
+}) {
   return (
-    <div className={`flex items-center justify-between px-6 py-4 ${!last ? 'border-b border-outline-variant' : ''}`}>
+    <div
+      className={`flex items-center justify-between px-6 py-4 ${!last ? 'border-b border-outline-variant' : ''} ${
+        highlight ? 'bg-blue/5' : ''
+      }`}
+    >
       <span className={bold ? 'font-semibold text-navy' : 'text-on-surface-variant'}>{label}</span>
       <span className={`tabular-nums ${bold ? 'text-lg font-bold text-navy' : ''}`}>{formatNaira(value)}</span>
     </div>
+  )
+}
+
+function BreakdownRow({ label, value, items }: { label: string; value: number; items: CategoryAmountItem[] }) {
+  return (
+    <details className="group border-b border-outline-variant">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2 text-on-surface-variant">
+          <span className="material-symbols-outlined text-lg transition-transform group-open:rotate-90">
+            chevron_right
+          </span>
+          {label}
+        </span>
+        <span className="tabular-nums">{formatNaira(value)}</span>
+      </summary>
+      <div className="px-6 pb-4 pl-11">
+        {items.length > 0 ? (
+          <ul className="space-y-1.5 text-sm text-on-surface-variant">
+            {items.map((item) => (
+              <li key={item.category_name} className="flex items-center justify-between">
+                <span>{item.category_name}</span>
+                <span className="tabular-nums">{formatNaira(item.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm italic text-on-surface-variant">Nothing in this category.</p>
+        )}
+      </div>
+    </details>
   )
 }

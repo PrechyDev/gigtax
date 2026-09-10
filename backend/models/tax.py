@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Float, func
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float, JSON, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from db.base_class import Base
@@ -16,6 +16,12 @@ class TaxComputation(Base):
     total_capital_allowances = Column(Float, default=0.0)
     taxable_income = Column(Float, default=0.0)
     estimated_tax_owed = Column(Float, default=0.0)
+    # {"income_items": [...], "deduction_items": [...], "relief_items": [...],
+    # "capital_allowance_items": [...]} — each a list of {category_name, amount}.
+    # Stored at compute time (rather than re-derived from live transactions on every
+    # GET) so a report always reflects exactly what was last computed, same as the
+    # totals above.
+    items = Column(JSON, nullable=True)
     last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
