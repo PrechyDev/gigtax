@@ -20,12 +20,8 @@ export interface TokenResponse {
 }
 
 export interface RegisterInput {
-  name: string
   email: string
   password: string
-  occupation_type?: string
-  state_residence?: string
-  tax_year?: string
 }
 
 export interface LoginInput {

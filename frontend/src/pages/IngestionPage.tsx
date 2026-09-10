@@ -12,7 +12,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { PageSpinner, Spinner } from '../components/ui/Spinner'
 import { StatusPill, parsingStatusTone } from '../components/ui/StatusPill'
-import { SelectField, TextField } from '../components/ui/FormField'
+import { PasswordField, SelectField, TextField } from '../components/ui/FormField'
 import { ApiError } from '../lib/apiClient'
 import { formatDateTime } from '../lib/formatters'
 
@@ -397,9 +397,8 @@ function UnlockModal({
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="block w-full text-sm"
         />
-        <TextField
+        <PasswordField
           label="Password"
-          type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}

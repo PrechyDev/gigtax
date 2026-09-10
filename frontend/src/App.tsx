@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { OnboardingPage } from './pages/OnboardingPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { IngestionPage } from './pages/IngestionPage'
 import { LedgerPage } from './pages/LedgerPage'
@@ -16,6 +17,7 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
+      <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/ingestion" element={<ProtectedRoute><IngestionPage /></ProtectedRoute>} />
       <Route path="/ledger" element={<ProtectedRoute><LedgerPage /></ProtectedRoute>} />

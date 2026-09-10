@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/apiClient'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner } from '../components/ui/Banner'
-import { TextField } from '../components/ui/FormField'
+import { PasswordField, TextField } from '../components/ui/FormField'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -50,9 +50,8 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}

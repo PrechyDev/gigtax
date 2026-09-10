@@ -69,7 +69,11 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     throw new ApiError('Could not reach the server. Check your connection and try again.', 0)
   }
 
-  if (response.status === 401) {
+  // A 401 only means "your session expired" when a token was actually sent and
+  // rejected. Login/register return 401 for plain wrong credentials without ever
+  // attaching a token — that must fall through to the backend's real message below,
+  // not get overwritten with a misleading "session expired" banner.
+  if (response.status === 401 && token) {
     clearToken()
     if (!window.location.pathname.startsWith('/login')) {
       window.location.href = '/login'

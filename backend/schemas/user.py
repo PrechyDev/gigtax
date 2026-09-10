@@ -27,7 +27,10 @@ def _validate_password_strength(value: str) -> str:
 
 
 class UserRegister(BaseModel):
-    name: str = Field(max_length=NAME_MAX_LENGTH)
+    # Registration is deliberately just email + password — name and the rest of the
+    # profile are collected on the onboarding step right after account creation (see
+    # frontend OnboardingPage), not blocking account creation itself.
+    name: str | None = Field(default=None, max_length=NAME_MAX_LENGTH)
     email: EmailStr
     password: str = Field(min_length=8)
     occupation_type: str | None = Field(default=None, max_length=OCCUPATION_MAX_LENGTH)

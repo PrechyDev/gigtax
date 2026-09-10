@@ -13,6 +13,17 @@ def test_register_creates_user_and_returns_token(client):
     assert body["access_token"]
 
 
+def test_register_without_name_derives_a_default_from_email(client):
+    response = client.post("/auth/register", json={
+        "email": "jane.doe@example.com", "password": "Supersecret123!",
+    })
+    assert response.status_code == 201
+    token = response.json()["access_token"]
+
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.json()["name"] == "Jane Doe"
+
+
 def test_register_rejects_non_4_digit_tax_year_with_422_not_500(client):
     # Regression test: Swagger's default placeholder value ("string") for tax_year
     # used to reach the DB as-is and crash with a raw 500 (StringDataRightTruncation)

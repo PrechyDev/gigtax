@@ -2,25 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/apiClient'
-import { NIGERIA_STATES } from '../lib/nigeriaStates'
 import { checkPasswordRules } from '../lib/passwordRules'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner } from '../components/ui/Banner'
-import { SelectField, TextField } from '../components/ui/FormField'
-
-const CURRENT_YEAR = new Date().getFullYear()
+import { PasswordField, TextField } from '../components/ui/FormField'
 
 export function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    occupation_type: '',
-    state_residence: '',
-    tax_year: String(CURRENT_YEAR),
-  })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [passwordTouched, setPasswordTouched] = useState(false)
@@ -42,7 +32,9 @@ export function RegisterPage() {
     setIsSubmitting(true)
     try {
       await register(form)
-      navigate('/dashboard')
+      // The rest of the profile (name, occupation, state, tax year) is collected on
+      // the next screen — registration itself only ever needed email + password.
+      navigate('/onboarding')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
     } finally {
@@ -65,7 +57,6 @@ export function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <TextField label="Full Name" required value={form.name} onChange={(e) => update('name', e.target.value)} />
           <TextField
             label="Email"
             type="email"
@@ -73,9 +64,8 @@ export function RegisterPage() {
             value={form.email}
             onChange={(e) => update('email', e.target.value)}
           />
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             required
             minLength={8}
             value={form.password}
@@ -97,24 +87,6 @@ export function RegisterPage() {
               ))}
             </ul>
           )}
-          <TextField
-            label="Occupation"
-            placeholder="e.g. Freelance designer"
-            value={form.occupation_type}
-            onChange={(e) => update('occupation_type', e.target.value)}
-          />
-          <SelectField
-            label="State of Residence"
-            value={form.state_residence}
-            onChange={(e) => update('state_residence', e.target.value)}
-          >
-            <option value="">Select a state...</option>
-            {NIGERIA_STATES.map((state) => (
-              <option key={state} value={state}>
-                {state}
-              </option>
-            ))}
-          </SelectField>
           <Button type="submit" isLoading={isSubmitting} className="w-full">
             Create Account
           </Button>
