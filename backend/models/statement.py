@@ -10,6 +10,8 @@ class ParsingStatus(str, enum.Enum):
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    LOCKED = "LOCKED"  # password-protected PDF awaiting a retry with a password
+
 
 class StatementUpload(Base):
     __tablename__ = "statement_uploads"
@@ -19,7 +21,11 @@ class StatementUpload(Base):
     file_name = Column(String(255), nullable=False)
     upload_date = Column(DateTime(timezone=True), nullable=False)
     parsing_status = Column(Enum(ParsingStatus), default=ParsingStatus.PENDING)
-    storage_path = Column(String(500), nullable=False)
+    source_type = Column(String(20))  # "pdf" | "csv" | "excel" | "image"
+    # Nullable: raw statement bytes are processed in memory and never persisted
+    # (see .agents/AGENTS.md privacy rule), so most uploads have no storage_path at all.
+    storage_path = Column(String(500), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="statements")
+    transactions = relationship("Transaction", back_populates="statement")

@@ -12,3 +12,7 @@ class Category(Base):
     developer_slug = Column(String(100), unique=True, nullable=False)
     description = Column(String(255))
     tax_treatment = Column(String(255))
+    # Only meaningful when classification == "Asset": which First Schedule capital
+    # allowance class (and therefore annual write-down rate) this category maps to.
+    # See modules/tax_computation/capital_allowances.py for the class -> rate table.
+    asset_class = Column(String(20), nullable=True)

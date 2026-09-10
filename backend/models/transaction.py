@@ -9,6 +9,7 @@ class Transaction(Base):
 
     transaction_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)
+    statement_id = Column(UUID(as_uuid=True), ForeignKey("statement_uploads.statement_id"), nullable=True)
     date = Column(DateTime(timezone=True), nullable=False)
     description = Column(String(500), nullable=False)
     amount = Column(Float, nullable=False)
@@ -30,6 +31,7 @@ class Transaction(Base):
     # Relationships
     user = relationship("User", back_populates="transactions")
     receipts = relationship("Receipt", back_populates="transaction", cascade="all, delete-orphan")
+    statement = relationship("StatementUpload", back_populates="transactions")
 
 
 class IncomeRecord(Transaction):

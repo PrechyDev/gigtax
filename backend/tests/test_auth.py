@@ -1,0 +1,73 @@
+def test_register_creates_user_and_returns_token(client):
+    response = client.post("/auth/register", json={
+        "name": "Precious Okafor",
+        "email": "precious@example.com",
+        "password": "supersecret123",
+        "occupation_type": "freelancer",
+        "state_residence": "Lagos",
+        "tax_year": "2026",
+    })
+    assert response.status_code == 201
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["access_token"]
+
+
+def test_register_rejects_non_4_digit_tax_year_with_422_not_500(client):
+    # Regression test: Swagger's default placeholder value ("string") for tax_year
+    # used to reach the DB as-is and crash with a raw 500 (StringDataRightTruncation)
+    # since the column is varchar(4) — this must be caught as a clean validation error.
+    response = client.post("/auth/register", json={
+        "name": "Bad Year", "email": "badyear@example.com", "password": "supersecret123",
+        "tax_year": "string",
+    })
+    assert response.status_code == 422
+
+
+def test_register_rejects_overlong_name_with_422_not_500(client):
+    response = client.post("/auth/register", json={
+        "name": "A" * 200, "email": "longname@example.com", "password": "supersecret123",
+    })
+    assert response.status_code == 422
+
+
+def test_register_rejects_duplicate_email(client):
+    payload = {"name": "A", "email": "dupe@example.com", "password": "supersecret123"}
+    first = client.post("/auth/register", json=payload)
+    assert first.status_code == 201
+
+    second = client.post("/auth/register", json=payload)
+    assert second.status_code == 409
+
+
+def test_login_with_correct_credentials(client):
+    client.post("/auth/register", json={
+        "name": "Login User", "email": "login@example.com", "password": "supersecret123",
+    })
+    response = client.post("/auth/login", json={"email": "login@example.com", "password": "supersecret123"})
+    assert response.status_code == 200
+    assert response.json()["access_token"]
+
+
+def test_login_with_wrong_password_is_rejected(client):
+    client.post("/auth/register", json={
+        "name": "Login User", "email": "wrongpw@example.com", "password": "supersecret123",
+    })
+    response = client.post("/auth/login", json={"email": "wrongpw@example.com", "password": "wrong"})
+    assert response.status_code == 401
+
+
+def test_me_requires_a_token(client):
+    response = client.get("/auth/me")
+    assert response.status_code == 401
+
+
+def test_me_returns_profile_with_valid_token(client):
+    register_response = client.post("/auth/register", json={
+        "name": "Profile User", "email": "profile@example.com", "password": "supersecret123",
+    })
+    token = register_response.json()["access_token"]
+
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200
+    assert response.json()["email"] == "profile@example.com"

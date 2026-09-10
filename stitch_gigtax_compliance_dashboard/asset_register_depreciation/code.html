@@ -1,0 +1,419 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GigTax - Asset Register</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-tertiary-container": "#3980f4",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-primary-container": "#7c839b",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "primary-container": "#131b2e",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-primary": "#bec6e0",
+                        "secondary-fixed": "#6ffbbe",
+                        "primary-fixed": "#dae2fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "secondary": "#006c49",
+                        "on-primary-fixed": "#131b2e",
+                        "primary": "#000000",
+                        "tertiary-container": "#001a42",
+                        "on-surface-variant": "#45464d",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "inverse-surface": "#2d3133",
+                        "on-background": "#191c1e",
+                        "outline": "#76777d",
+                        "surface-container": "#eceef0",
+                        "surface-tint": "#565e74",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#00714d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed": "#002113"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "stack-sm": "4px",
+                        "stack-lg": "24px",
+                        "stack-md": "12px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .shadow-level-1 { box-shadow: 0px 4px 20px rgba(15, 23, 42, 0.05); }
+        .shadow-level-2 { box-shadow: 0px 10px 30px rgba(15, 23, 42, 0.08); }
+        .zebra-stripe:nth-child(even) { background-color: #f7f9fb; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex text-body-md overflow-x-hidden">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex bg-surface-container-lowest shadow-sm w-64 h-full fixed left-0 top-0 flex-col py-stack-lg px-gutter z-20">
+<div class="mb-stack-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">GigTax</h1>
+<p class="text-label-sm font-label-sm text-on-surface-variant mt-stack-sm">Freelancer Edition</p>
+</div>
+<ul class="flex-1 space-y-stack-sm">
+<li class="">
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Ledger</span>
+</a>
+</li>
+<li class="">
+<!-- Active State -->
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-low scale-[0.98] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="text-label-md font-label-md">Assets</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-label-md font-label-md">Reports</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="text-label-md font-label-md">Advisor</span>
+</a>
+</li>
+<li class="">
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto pt-stack-lg">
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg text-label-md font-label-md font-bold hover:bg-primary-container transition-colors mb-stack-md">
+                File Taxes Now
+            </button>
+<a class="flex items-center space-x-stack-md py-3 px-4 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Help Center</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar (Desktop) -->
+<header class="hidden md:flex justify-between items-center h-16 px-gutter bg-surface border-b border-surface-variant sticky top-0 z-10">
+<div class="flex items-center w-96">
+<!-- Search Bar -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary text-body-sm font-body-sm outline-none transition-shadow" placeholder="Search assets..." type="text">
+</div>
+</div>
+<div class="flex items-center space-x-stack-lg text-on-surface-variant">
+<button class="hover:text-primary transition-colors opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="add_to_drive">add_to_drive</span>
+</button>
+<button class="hover:text-primary transition-colors opacity-80 hover:opacity-100 relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="hover:text-primary transition-colors opacity-80 hover:opacity-100">
+<img alt="Freelancer Profile" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small circular avatar placeholder image showing a professional freelance worker smiling, well-lit, corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFtKlGszQZbAveLZtxzxa3hljHaEv_NQoBqeyJ5FWmODOYdoUStBnAQTAINhmkS1owhlY3BrPQ463K1Jb_fw8j-dvvU6Y4EiV-m_3JJgDwC7GKPZL_buyPBKp5OjNk07VHkG5WhgNi8cTVuWIFttlRbdnBtfe2R9xV5vXYBr3wbBFDfGujI8IY5IftCRTljrDfnCZs1OXLeMfoaX4edtUorTplimQXernb97z8_YEAnkXaT5-LkMmZsA">
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-margin-mobile md:p-gutter max-w-container-max mx-auto w-full">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-stack-lg gap-stack-md">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg font-bold text-primary">Asset Register</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Track hardware depreciation and capital allowances for 2024.</p>
+</div>
+<div class="flex gap-stack-md w-full md:w-auto">
+<button class="flex-1 md:flex-none flex items-center justify-center space-x-2 border border-outline-variant text-on-surface bg-surface-container-lowest py-2 px-4 rounded-lg text-label-md font-label-md hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+<span class="">Export</span>
+</button>
+<button class="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-[#3B82F6] text-white py-2 px-4 rounded-lg text-label-md font-label-md hover:bg-[#2563EB] transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">add</span>
+<span class="">New Asset</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid Layout for Summary -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-lg mb-stack-lg">
+<!-- Total Assets Card -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl p-stack-lg shadow-level-1 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl" data-icon="devices">devices</span>
+</div>
+<p class="text-label-md font-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Total Asset Value</p>
+<h3 class="text-headline-lg font-headline-lg font-bold text-primary">₦ 4,250,000</h3>
+<div class="flex items-center mt-stack-sm text-secondary">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+<span class="text-label-sm font-label-sm">+12% vs last year</span>
+</div>
+</div>
+<!-- Total Depreciation Card -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl p-stack-lg shadow-level-1 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl" data-icon="trending_down">trending_down</span>
+</div>
+<p class="text-label-md font-label-md text-on-surface-variant mb-2 uppercase tracking-wider">Total Depreciation</p>
+<h3 class="text-headline-lg font-headline-lg font-bold text-primary">₦ 1,120,500</h3>
+<p class="text-label-sm font-label-sm text-on-surface-variant mt-stack-sm">Accumulated to date</p>
+</div>
+<!-- Allowances Card (Glassmorphism inspired) -->
+<div class="md:col-span-4 bg-gradient-to-br from-[#001a42] to-[#131b2e] text-white rounded-xl p-stack-lg shadow-level-2 relative overflow-hidden">
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white opacity-5 rounded-full blur-2xl"></div>
+<div class="absolute -left-10 -top-10 w-32 h-32 bg-[#3B82F6] opacity-20 rounded-full blur-2xl"></div>
+<p class="text-label-md font-label-md text-inverse-primary mb-2 uppercase tracking-wider">2024 Deductible Allowance</p>
+<h3 class="text-headline-lg font-headline-lg font-bold text-white relative z-10">₦ 845,000</h3>
+<div class="mt-stack-md">
+<div class="flex justify-between text-label-sm font-label-sm mb-1">
+<span class="text-inverse-primary">Utilization limit</span>
+<span class="">65%</span>
+</div>
+<div class="w-full bg-surface-tint rounded-full h-1.5">
+<div class="bg-[#6cf8bb] h-1.5 rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Detailed Table Section -->
+<div class="bg-surface-container-lowest rounded-xl shadow-level-1 overflow-hidden">
+<div class="p-stack-lg border-b border-surface-variant flex justify-between items-center">
+<h3 class="text-headline-md font-headline-md font-semibold text-primary">Capital Allowances Breakdown</h3>
+<div class="flex items-center space-x-stack-sm">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-lg transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-[#4edea3] opacity-0 group-hover:opacity-100 transition-opacity"></div><table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface border-b border-surface-variant text-label-md font-label-md text-[#001a42]">
+<th class="p-4 font-semibold w-1/4">Asset Details</th>
+<th class="p-4 font-semibold">Purchase Value</th>
+<th class="p-4 font-semibold text-center">Rate</th>
+<th class="p-4 font-semibold">Accumulated Dep.</th>
+<th class="p-4 font-semibold">Current Year Ded.</th>
+<th class="p-4 font-semibold text-right">Status</th>
+</tr>
+</thead>
+<tbody class="text-body-sm font-body-sm">
+<!-- Row 1 -->
+<tr class="border-b border-[#F1F5F9] hover:bg-surface transition-colors zebra-stripe group">
+<td class="p-4">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-xl">laptop_mac</span>
+</div>
+<div>
+<p class="font-semibold text-primary">MacBook Pro 16"</p>
+<p class="text-label-sm text-on-surface-variant">Purchased: Jan 15, 2023</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-on-surface font-medium">₦ 1,850,000</td>
+<td class="p-4 text-center">
+<span class="inline-block px-2 py-1 bg-surface-container-low text-on-surface-variant rounded text-label-sm">33.3%</span>
+</td>
+<td class="p-4 text-on-surface-variant">₦ 616,050</td>
+<td class="p-4 font-semibold text-[#006c49]">₦ 616,050</td>
+<td class="p-4 text-right">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium bg-[#ecfdf5] text-[#00714d] border border-[#a7f3d0]">
+                                        Active
+                                    </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-[#F1F5F9] hover:bg-surface transition-colors zebra-stripe group relative">
+<!-- Emerald Green Accent for "Paid/Fully Depreciated" style indication -->
+<td class="p-4">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-xl">photo_camera</span>
+</div>
+<div>
+<p class="font-semibold text-primary">Sony A7IV Camera</p>
+<p class="text-label-sm text-on-surface-variant">Purchased: Mar 10, 2022</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-on-surface font-medium">₦ 1,200,000</td>
+<td class="p-4 text-center">
+<span class="inline-block px-2 py-1 bg-surface-container-low text-on-surface-variant rounded text-label-sm">20.0%</span>
+</td>
+<td class="p-4 text-on-surface-variant">₦ 480,000</td>
+<td class="p-4 font-semibold text-[#006c49]">₦ 240,000</td>
+<td class="p-4 text-right">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium bg-[#ecfdf5] text-[#00714d] border border-[#a7f3d0]">
+                                        Active
+                                    </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-[#F1F5F9] hover:bg-surface transition-colors zebra-stripe group">
+<td class="p-4">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-xl">chair</span>
+</div>
+<div>
+<p class="font-semibold text-primary">Ergonomic Office Chair</p>
+<p class="text-label-sm text-on-surface-variant">Purchased: Nov 05, 2023</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-on-surface font-medium">₦ 350,000</td>
+<td class="p-4 text-center">
+<span class="inline-block px-2 py-1 bg-surface-container-low text-on-surface-variant rounded text-label-sm">15.0%</span>
+</td>
+<td class="p-4 text-on-surface-variant">₦ 0</td>
+<td class="p-4 font-semibold text-[#006c49]">₦ 52,500</td>
+<td class="p-4 text-right">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium bg-[#fffbeb] text-[#b45309] border border-[#fde68a]">
+                                        Pending
+                                    </span>
+</td>
+</tr>
+<!-- Row 4 (Fully Depreciated Example) -->
+<tr class="border-b border-[#F1F5F9] hover:bg-surface transition-colors zebra-stripe group">
+<td class="p-4">
+<div class="flex items-center space-x-3 opacity-60">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-xl">print</span>
+</div>
+<div>
+<p class="font-semibold text-primary line-through">LaserJet Printer</p>
+<p class="text-label-sm text-on-surface-variant">Purchased: Jun 20, 2020</p>
+</div>
+</div>
+</td>
+<td class="p-4 text-on-surface font-medium opacity-60">₦ 150,000</td>
+<td class="p-4 text-center opacity-60">
+<span class="inline-block px-2 py-1 bg-surface-container-low text-on-surface-variant rounded text-label-sm">33.3%</span>
+</td>
+<td class="p-4 text-on-surface-variant opacity-60">₦ 150,000</td>
+<td class="p-4 font-semibold text-outline opacity-60">₦ 0</td>
+<td class="p-4 text-right">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium bg-surface-container-highest text-on-surface-variant border border-outline-variant">
+                                        Fully Depreciated
+                                    </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Footer -->
+<div class="p-4 border-t border-surface-variant flex items-center justify-between text-label-sm font-label-sm text-on-surface-variant">
+<p class="">Showing 1 to 4 of 12 assets</p>
+<div class="flex space-x-2">
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-low transition-colors disabled:opacity-50" disabled="">Previous</button>
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-container-low transition-colors">Next</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom Navigation (Hidden on md+) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface-container-lowest border-t border-surface-variant flex justify-around items-center h-16 px-4 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center text-on-surface-variant opacity-70 hover:opacity-100 p-2" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] mt-1 font-medium">Dashboard</span>
+</a>
+<!-- Active -->
+<a class="flex flex-col items-center text-primary font-bold p-2" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="text-[10px] mt-1 font-bold">Assets</span>
+</a>
+<!-- FAB placeholder center -->
+<div class="relative -top-5">
+<button class="bg-[#3B82F6] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-[#2563EB] transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center text-on-surface-variant opacity-70 hover:opacity-100 p-2" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px] mt-1 font-medium">Reports</span>
+</a>
+<a class="flex flex-col items-center text-on-surface-variant opacity-70 hover:opacity-100 p-2" href="#">
+<span class="material-symbols-outlined">menu</span>
+<span class="text-[10px] mt-1 font-medium">More</span>
+</a>
+</nav>
+
+
+</body></html>

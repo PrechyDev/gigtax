@@ -1,0 +1,339 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GigTax - Authentication</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#f7f9fb",
+                      "on-secondary": "#ffffff",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed": "#001a42",
+                      "on-tertiary-container": "#3980f4",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f7f9fb",
+                      "tertiary-fixed-dim": "#adc6ff",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-bright": "#f7f9fb",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c6c6cd",
+                      "on-primary-container": "#7c839b",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#004395",
+                      "error-container": "#ffdad6",
+                      "on-surface": "#191c1e",
+                      "surface-dim": "#d8dadc",
+                      "primary-container": "#131b2e",
+                      "surface-container-low": "#f2f4f6",
+                      "inverse-primary": "#bec6e0",
+                      "secondary-fixed": "#6ffbbe",
+                      "primary-fixed": "#dae2fd",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-secondary-fixed-variant": "#005236",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "secondary": "#006c49",
+                      "on-primary-fixed": "#131b2e",
+                      "primary": "#000000",
+                      "tertiary-container": "#001a42",
+                      "on-surface-variant": "#45464d",
+                      "secondary-container": "#6cf8bb",
+                      "primary-fixed-dim": "#bec6e0",
+                      "tertiary-fixed": "#d8e2ff",
+                      "secondary-fixed-dim": "#4edea3",
+                      "inverse-surface": "#2d3133",
+                      "on-background": "#191c1e",
+                      "outline": "#76777d",
+                      "surface-container": "#eceef0",
+                      "surface-tint": "#565e74",
+                      "error": "#ba1a1a",
+                      "on-secondary-container": "#00714d",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-secondary-fixed": "#002113"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "8px",
+                      "gutter": "24px",
+                      "container-max": "1280px",
+                      "stack-sm": "4px",
+                      "stack-lg": "24px",
+                      "stack-md": "12px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center font-body-md text-on-surface antialiased overflow-hidden">
+<!-- Background Image / Canvas -->
+<div class="fixed inset-0 z-0">
+<div class="bg-cover bg-center w-full h-full opacity-30" data-alt="A clean, abstract architectural background featuring soft, diffused lighting and pristine white surfaces. The scene conveys a modern, professional financial environment with subtle geometric shapes and a bright, airy aesthetic suitable for a high-end corporate application." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAlwbzbxsTWK_7nfjQNSEMdyq7Itucu4nCHSp3V3wkjnff0oFlXCDHv7I_jeYS1AgJJ_srY5iIORUJ68yUp0iwp62A9CEfsiEJA8IkcN7X5i-9OcmeVLrZbYa6wC2DSJ_1_ggVihgdKNh8Wl2FxLK6AuzczcvkrFLhmDn0fyDf7s56Av-QsjqWKSxTjZq5eEvlg02kXgZjIamrf9fenHvxAW6AEcPLqYCADIZnlabm1KWeeFQiLGSNZKA')"></div>
+</div>
+<!-- Main Auth Container -->
+<div class="relative z-10 w-full max-w-md px-margin-mobile md:px-0">
+<!-- Logo Area -->
+<div class="text-center mb-stack-lg">
+<h1 class="font-display-lg text-display-lg text-primary">GigTax</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-stack-sm">Freelancer Edition</p>
+</div>
+<!-- Auth Card -->
+<div class="glass-panel rounded-xl shadow-lg p-stack-lg md:p-margin-desktop">
+<h2 class="font-headline-md text-headline-md text-primary mb-stack-md">Welcome Back</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-stack-lg">Securely manage your freelance tax compliance.</p>
+<form action="#" class="space-y-stack-md" method="POST">
+<!-- Email Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-stack-sm" for="email">Email Address</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-outline">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">mail</span>
+</span>
+<input class="block w-full h-12 pl-12 pr-4 rounded-lg border border-surface-variant bg-surface-container-lowest focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-colors font-body-md text-body-md text-on-surface placeholder:text-outline" id="email" name="email" placeholder="name@example.com" required="" type="email">
+</div>
+</div>
+<!-- Password Input -->
+<div>
+<div class="flex justify-between items-center mb-stack-sm">
+<label class="block font-label-md text-label-md text-on-surface" for="password">Password</label>
+<a class="font-label-sm text-label-sm text-[#3B82F6] hover:underline" href="#">Forgot?</a>
+</div>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-outline">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">lock</span>
+</span>
+<input class="block w-full h-12 pl-12 pr-4 rounded-lg border border-surface-variant bg-surface-container-lowest focus:ring-2 focus:ring-[#3B82F6] focus:border-[#3B82F6] transition-colors font-body-md text-body-md text-on-surface placeholder:text-outline" id="password" name="password" placeholder="••••••••" required="" type="password">
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full h-12 mt-stack-lg bg-[#3B82F6] hover:bg-[#2563EB] text-white font-label-md text-label-md rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2" onclick="showOnboardingModal()" type="button">
+                    Sign In
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+<div class="mt-stack-lg text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">New to GigTax? <a class="font-label-md text-label-md text-[#3B82F6] hover:underline ml-1" href="#">Create Account</a></p>
+</div>
+</div>
+</div>
+<!-- Onboarding Modal (Initially Hidden) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center px-margin-mobile opacity-0 pointer-events-none transition-opacity duration-300 hidden" id="onboardingModal">
+<!-- Backdrop -->
+<div class="absolute inset-0 modal-overlay" onclick="hideOnboardingModal()"></div>
+<!-- Modal Content -->
+<div class="relative bg-surface-container-lowest w-full max-w-lg rounded-xl shadow-[0px_10px_30px_rgba(15,23,42,0.08)] transform scale-95 transition-transform duration-300 flex flex-col max-h-[921px]">
+<!-- Modal Header -->
+<div class="flex items-center justify-between p-stack-lg border-b border-surface-variant">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Complete Your Profile</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-stack-sm">3 steps remaining to activate your account</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low" onclick="hideOnboardingModal()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="p-stack-lg overflow-y-auto flex-1 space-y-stack-md">
+<!-- Step 1: TIN -->
+<div class="p-stack-md rounded-lg border border-surface-variant bg-surface flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">badge</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-surface">Tax Identification Number (TIN)</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 mb-3">Required for official tax filings.</p>
+<button class="px-4 py-2 bg-white border border-surface-variant rounded-lg font-label-sm text-label-sm text-on-surface hover:bg-surface-container-low transition-colors shadow-sm">
+                            Add TIN
+                        </button>
+</div>
+</div>
+<!-- Step 2: State -->
+<div class="p-stack-md rounded-lg border border-surface-variant bg-surface flex items-start gap-4 opacity-75">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-surface">State of Residence</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 mb-3">Determines relevant tax authorities.</p>
+<button class="px-4 py-2 bg-white border border-surface-variant rounded-lg font-label-sm text-label-sm text-on-surface hover:bg-surface-container-low transition-colors shadow-sm" disabled="">
+                            Pending
+                        </button>
+</div>
+</div>
+<!-- Step 3: Income -->
+<div class="p-stack-md rounded-lg border border-surface-variant bg-surface flex items-start gap-4 opacity-75">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant">account_balance</span>
+</div>
+<div class="flex-1">
+<h4 class="font-label-md text-label-md text-on-surface">Income Sources</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 mb-3">Connect your primary freelance revenue streams.</p>
+<button class="px-4 py-2 bg-white border border-surface-variant rounded-lg font-label-sm text-label-sm text-on-surface hover:bg-surface-container-low transition-colors shadow-sm" disabled="">
+                            Pending
+                        </button>
+</div>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="p-stack-lg border-t border-surface-variant bg-surface-container-lowest rounded-b-xl flex justify-end gap-stack-md">
+<button class="px-6 py-2 border border-surface-variant rounded-lg font-label-md text-label-md text-on-surface hover:bg-surface-container-low transition-colors" onclick="hideOnboardingModal()">
+                    Skip for Now
+                </button>
+<button class="px-6 py-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-lg font-label-md text-label-md shadow-sm transition-colors">
+                    Start Setup
+                </button>
+</div>
+</div>
+</div>
+<script>
+        const modal = document.getElementById('onboardingModal');
+        const modalContent = modal.querySelector('.relative.bg-surface-container-lowest');
+
+        function showOnboardingModal() {
+            modal.classList.remove('hidden');
+            // Trigger reflow
+            void modal.offsetWidth;
+            
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }
+
+        function hideOnboardingModal() {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300); // match duration
+        }
+    </script>
+
+
+</body></html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GigTax - Settings &amp; Integrations</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#f7f9fb",
+                      "on-secondary": "#ffffff",
+                      "tertiary": "#000000",
+                      "on-tertiary-fixed": "#001a42",
+                      "on-tertiary-container": "#3980f4",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f7f9fb",
+                      "tertiary-fixed-dim": "#adc6ff",
+                      "surface-container-high": "#e6e8ea",
+                      "surface-bright": "#f7f9fb",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container-highest": "#e0e3e5",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c6c6cd",
+                      "on-primary-container": "#7c839b",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#004395",
+                      "error-container": "#ffdad6",
+                      "on-surface": "#191c1e",
+                      "surface-dim": "#d8dadc",
+                      "primary-container": "#131b2e",
+                      "surface-container-low": "#f2f4f6",
+                      "inverse-primary": "#bec6e0",
+                      "secondary-fixed": "#6ffbbe",
+                      "primary-fixed": "#dae2fd",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-secondary-fixed-variant": "#005236",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "secondary": "#006c49",
+                      "on-primary-fixed": "#131b2e",
+                      "primary": "#000000",
+                      "tertiary-container": "#001a42",
+                      "on-surface-variant": "#45464d",
+                      "secondary-container": "#6cf8bb",
+                      "primary-fixed-dim": "#bec6e0",
+                      "tertiary-fixed": "#d8e2ff",
+                      "secondary-fixed-dim": "#4edea3",
+                      "inverse-surface": "#2d3133",
+                      "on-background": "#191c1e",
+                      "outline": "#76777d",
+                      "surface-container": "#eceef0",
+                      "surface-tint": "#565e74",
+                      "error": "#ba1a1a",
+                      "on-secondary-container": "#00714d",
+                      "on-primary-fixed-variant": "#3f465c",
+                      "on-secondary-fixed": "#002113"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "base": "8px",
+                      "gutter": "24px",
+                      "container-max": "1280px",
+                      "stack-sm": "4px",
+                      "stack-lg": "24px",
+                      "stack-md": "12px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex w-64 h-full fixed left-0 top-0 bg-surface-container-lowest flex-col py-stack-lg px-gutter shadow-sm z-20">
+<div class="mb-stack-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">GigTax</h1>
+<p class="text-label-sm font-label-sm text-on-surface-variant mt-stack-sm">Freelancer Edition</p>
+</div>
+<div class="flex-1 space-y-stack-sm">
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Ledger</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">inventory_2</span>
+<span class="text-label-md font-label-md">Assets</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="text-label-md font-label-md">Reports</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">support_agent</span>
+<span class="text-label-md font-label-md">Advisor</span>
+</a>
+<a class="flex items-center px-4 py-3 rounded-lg text-primary font-bold border-r-4 border-primary hover:bg-surface-container-low transition-colors duration-200 scale-[0.98]" href="#">
+<span class="material-symbols-outlined fill-icon mr-3">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</div>
+<div class="mt-auto pt-stack-lg border-t border-surface-variant">
+<a class="flex items-center px-4 py-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 mb-stack-md" href="#">
+<span class="material-symbols-outlined mr-3">help</span>
+<span class="text-label-md font-label-md">Help Center</span>
+</a>
+<button class="w-full bg-[#3B82F6] text-on-primary text-label-md font-label-md py-3 rounded-lg hover:bg-opacity-90 transition-opacity shadow-sm">
+                File Taxes Now
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="hidden md:flex justify-between items-center h-16 px-gutter w-full bg-surface border-b border-surface-variant sticky top-0 z-10">
+<div class="flex items-center bg-surface-container-low rounded-full px-4 py-2 w-96 border border-outline-variant focus-within:border-[#3B82F6] transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm text-on-surface w-full p-0" placeholder="Search settings..." type="text">
+</div>
+<div class="flex items-center space-x-stack-md">
+<button class="p-2 text-on-surface-variant hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">add_to_drive</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a young Nigerian freelancer, well-lit in a modern, minimalist studio setting with a light gray background. The subject is wearing smart-casual attire in deep navy blue. The image exudes confidence, institutional stability, and a polished corporate aesthetic suitable for a high-end financial application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUYToChYFDxVZe34d3pmJXvhtIdLs6Rv_tW7OuueTWLZf7o1cNPspK5yLWAMhy7_A-SuAIjQdAUJTbuYYvsTYROezVPRyG3Zh0RzM-IzVMEL7amPRboRFKZELyvydJOMhaEJK8aFKa6K_js6IW1iU9LjJLVj94SV0mpfXUMbXK9rD4L9AK9-BnDQrRfGoy667P1T5eC9qmfC1wwJ8Qmm4HOpxGD0SBhdFOe5LmQ4tRq_CH14mvEqtSoA">
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
+<div class="max-w-container-max mx-auto">
+<div class="mb-stack-lg">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-primary">Settings &amp; Integrations</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-stack-sm max-w-2xl">Manage your account preferences, connected services, and data storage options.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Settings Sidebar Navigation (Inner) -->
+<div class="md:col-span-3 space-y-stack-sm">
+<a class="block px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-lowest transition-colors text-label-md font-label-md" href="#">Profile Details</a>
+<a class="block px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-lowest transition-colors text-label-md font-label-md" href="#">Billing &amp; Subscriptions</a>
+<a class="block px-4 py-3 rounded-lg bg-surface-container-lowest shadow-sm text-primary font-bold border-l-4 border-primary text-label-md font-label-md" href="#">Integrations</a>
+<a class="block px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-lowest transition-colors text-label-md font-label-md" href="#">Security</a>
+<a class="block px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-lowest transition-colors text-label-md font-label-md" href="#">Notifications</a>
+</div>
+<!-- Integrations Content -->
+<div class="md:col-span-9 space-y-stack-lg">
+<!-- BYOS Feature Section -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg border border-surface-variant">
+<div class="flex flex-col md:flex-row gap-gutter items-start">
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-stack-md">
+<span class="material-symbols-outlined text-[#3B82F6] text-[32px]">cloud_sync</span>
+<h3 class="text-headline-md font-headline-md text-primary">Bring Your Own Storage (BYOS)</h3>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant mb-stack-lg">Take full control of your financial documents. Connect your personal cloud storage to serve as your secure document vault. GigTax will read and write directly to your designated folder, ensuring your sensitive receipts and tax forms never reside permanently on our servers.</p>
+<!-- Google Drive Connection Status Card -->
+<div class="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-stack-md">
+<div class="flex items-center gap-stack-md w-full sm:w-auto">
+<div class="w-12 h-12 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-sm shrink-0">
+<img class="w-6 h-6 object-contain" data-alt="A clean, minimalist vector-style icon representing Google Drive, featuring the classic green, yellow, and blue triangle design against a pure white background. The image should be flat, modern, and suitable for a sophisticated corporate user interface, blending seamlessly into a light-mode layout." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjIqFXaIEW_OT8xo_yOFqeCiEgcgzC2b0dYtty8L00zPj_BJTBGRhNXcBlQy1SVakl_u1sPvTXMliGNI62uVZVNMbX_9y7ziqtXeCj0AZWj-NkyA2KeI9UYpv5HcnHnEl4-JDEayWzIAyrxhVbhP4N4BHujinIuXklf00MstiyG62fs1KUDyfN_9Ta4Lz1Aghk9N6AyIYKgjjPLc0H90izi2hOT0fN0HekK0LC7bGE55Oe0NPIqGq1Og">
+</div>
+<div>
+<h4 class="text-label-md font-label-md text-primary">Google Drive</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">Not Connected</span>
+</div>
+</div>
+</div>
+<button class="w-full sm:w-auto bg-[#3B82F6] text-on-primary text-label-md font-label-md py-2 px-6 rounded-lg hover:bg-opacity-90 transition-opacity shadow-sm whitespace-nowrap">
+                                            Connect Drive
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Other Integrations (Grid) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Accounting Software -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-md border border-surface-variant flex flex-col h-full">
+<div class="flex items-start justify-between mb-stack-md">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">account_balance</span>
+</div>
+<span class="px-2 py-1 bg-[#d8e2ff] text-[#001a42] rounded-full text-label-sm font-label-sm">Premium</span>
+</div>
+<h4 class="text-label-md font-label-md text-primary mb-1">Accounting Sync</h4>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-stack-md flex-1">Automatically import income and expenses from major accounting software.</p>
+<button class="w-full bg-transparent border border-outline-variant text-primary text-label-md font-label-md py-2 rounded-lg hover:bg-surface-container-low transition-colors">
+                                    Configure
+                                </button>
+</div>
+<!-- Bank Feeds -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-md border border-surface-variant flex flex-col h-full">
+<div class="flex items-start justify-between mb-stack-md">
+<div class="w-10 h-10 bg-surface-container-low rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">credit_card</span>
+</div>
+</div>
+<h4 class="text-label-md font-label-md text-primary mb-1">Bank Feeds</h4>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-stack-md flex-1">Connect your Nigerian bank accounts for real-time transaction monitoring.</p>
+<button class="w-full bg-transparent border border-outline-variant text-primary text-label-md font-label-md py-2 rounded-lg hover:bg-surface-container-low transition-colors">
+                                    Manage Connections
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+</body></html>

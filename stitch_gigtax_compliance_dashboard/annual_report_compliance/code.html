@@ -1,0 +1,299 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GigTax - Annual Tax Report</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-tertiary-container": "#3980f4",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-primary-container": "#7c839b",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "primary-container": "#131b2e",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-primary": "#bec6e0",
+                        "secondary-fixed": "#6ffbbe",
+                        "primary-fixed": "#dae2fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "secondary": "#006c49",
+                        "on-primary-fixed": "#131b2e",
+                        "primary": "#000000",
+                        "tertiary-container": "#001a42",
+                        "on-surface-variant": "#45464d",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "inverse-surface": "#2d3133",
+                        "on-background": "#191c1e",
+                        "outline": "#76777d",
+                        "surface-container": "#eceef0",
+                        "surface-tint": "#565e74",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#00714d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed": "#002113"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "stack-sm": "4px",
+                        "stack-lg": "24px",
+                        "stack-md": "12px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex antialiased">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-stack-lg px-gutter bg-surface-container-lowest shadow-sm w-64 fixed left-0 top-0 z-40">
+<div class="mb-stack-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">GigTax</h1>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-stack-sm">Freelancer Edition</p>
+</div>
+<div class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Ledger</span>
+</a>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-label-md font-label-md">Assets</span>
+</a>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-primary font-bold border-r-4 border-primary bg-surface-container-low scale-[0.98] transition-all" href="#">
+<span class="material-symbols-outlined icon-fill" data-icon="analytics">analytics</span>
+<span class="text-label-md font-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="text-label-md font-label-md">Advisor</span>
+</a>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</div>
+<div class="mt-auto pt-stack-lg border-t border-surface-variant">
+<button class="w-full bg-[#001a42] text-white py-3 rounded-lg text-label-md font-label-md font-bold mb-4 shadow-sm hover:opacity-90 transition-opacity">File Taxes Now</button>
+<a class="flex items-center gap-stack-md py-2 px-3 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Help Center</span>
+</a>
+<div class="mt-stack-lg flex items-center gap-3 px-3">
+<img alt="User Profile Avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A small, professional portrait photo of a young Nigerian freelancer, smiling confidently, well-lit against a neutral background. The lighting is soft and corporate, matching a modern light-mode interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA74mkDtFFsV2Np5iCvAtVatVXaT5Vce9VzjCVGyZaDo4PnuptALQRUL23VjJNz5RKaAZYsSzvstT0RI4KSAmJRmtA8ID1dvat4_5L4qYFm8KowbZCRhhSyrtn3Q8o-5Sucku8Anx_lRep0aJe7lgGL6lg6P6XvjevmrmOCrlZHjHnCanjplJ02eFMxkduky9aXSgaUViYX84QAh0UjNbPBWssdPm_LcaV1-aSu16L5ZC1QQt4pAhqEuQ">
+<div class="flex-col">
+<span class="text-label-md font-label-md text-on-surface block">Ngozi A.</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant block">Pro Plan</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-64 w-full md:w-[calc(100%-16rem)] min-h-screen">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface border-b border-surface-variant sticky top-0 z-30">
+<div class="flex-1"></div>
+<div class="flex items-center gap-stack-md text-on-surface-variant">
+<button class="p-2 hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="add_to_drive">add_to_drive</span>
+</button>
+<button class="p-2 hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 hover:text-secondary-container transition-colors rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-margin-mobile md:p-margin-desktop bg-surface-bright pb-24 md:pb-12">
+<div class="max-w-container-max mx-auto space-y-stack-lg">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-surface-variant pb-6">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-primary">Annual Tax Report &amp; Compliance</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-2">Fiscal Year 2023 - Form A Summary</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 border border-outline-variant rounded-lg text-label-md font-label-md text-on-surface hover:bg-surface-container-low transition-colors">Download Draft</button>
+<button class="px-4 py-2 bg-[#001a42] text-white rounded-lg text-label-md font-label-md font-bold shadow-sm hover:opacity-90 transition-opacity">File My Taxes</button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Left Column: Form A Breakdown (8 cols) -->
+<div class="md:col-span-8 space-y-gutter">
+<!-- Income Summary Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-headline-md font-headline-md text-primary">Income Assessment</h3>
+<span class="px-3 py-1 bg-[#e0f2fe] text-[#0369a1] rounded-full text-label-sm font-label-sm font-bold">Verified</span>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<span class="text-body-md font-body-md text-on-surface-variant">Trade/Business Income</span>
+<span class="text-body-md font-body-md font-semibold text-primary">₦ 8,500,000</span>
+</div>
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<span class="text-body-md font-body-md text-on-surface-variant">Freelance/Professional Fees</span>
+<span class="text-body-md font-body-md font-semibold text-primary">₦ 3,200,000</span>
+</div>
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<span class="text-body-md font-body-md text-on-surface-variant">Other Income</span>
+<span class="text-body-md font-body-md font-semibold text-primary">₦ 150,000</span>
+</div>
+<div class="flex justify-between items-center py-4 bg-surface-container-low px-4 rounded-lg mt-2">
+<span class="text-label-md font-label-md text-[#001a42]">Gross Income (A)</span>
+<span class="text-headline-md font-headline-md text-[#001a42]">₦ 11,850,000</span>
+</div>
+</div>
+</div>
+<!-- Deductions (Section 20) Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg border-l-4 border-l-[#006c49]">
+<h3 class="text-headline-md font-headline-md text-primary mb-6">Section 20 Deductions</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="check_circle">check_circle</span>
+<span class="text-body-md font-body-md text-on-surface-variant">Office Rent &amp; Utilities</span>
+</div>
+<span class="text-body-md font-body-md text-error">- ₦ 1,200,000</span>
+</div>
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="check_circle">check_circle</span>
+<span class="text-body-md font-body-md text-on-surface-variant">Software Subscriptions</span>
+</div>
+<span class="text-body-md font-body-md text-error">- ₦ 350,000</span>
+</div>
+<div class="flex justify-between items-center py-3 border-b border-[#F1F5F9]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[20px]" data-icon="check_circle">check_circle</span>
+<span class="text-body-md font-body-md text-on-surface-variant">Internet &amp; Comm.</span>
+</div>
+<span class="text-body-md font-body-md text-error">- ₦ 240,000</span>
+</div>
+<div class="flex justify-between items-center py-4 bg-surface-container-low px-4 rounded-lg mt-2">
+<span class="text-label-md font-label-md text-secondary">Total Allowable Deductions (B)</span>
+<span class="text-headline-md font-headline-md text-secondary">₦ 1,790,000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Compliance & Uploads (4 cols) -->
+<div class="md:col-span-4 space-y-gutter">
+<!-- Taxable Income Glass Card -->
+<div class="bg-[#001a42] text-white rounded-xl shadow-[0px_10px_30px_rgba(15,23,42,0.15)] p-stack-lg relative overflow-hidden">
+<!-- Abstract gradient background effect -->
+<div class="absolute inset-0 bg-gradient-to-br from-[#001a42] to-[#3980f4] opacity-80 z-0"></div>
+<div class="relative z-10">
+<h4 class="text-label-sm font-label-sm text-tertiary-fixed-dim uppercase tracking-wider mb-2">Net Taxable Income</h4>
+<div class="text-headline-lg font-headline-lg font-bold mb-6">₦ 10,060K</div>
+<div class="space-y-2 border-t border-white/20 pt-4"><div class="flex justify-between text-body-sm font-body-sm"><span class="text-tertiary-fixed-dim">Rent Relief</span><span class="">- ₦ 500,000</span></div><div class="flex justify-between text-body-sm font-body-sm"><span class="text-tertiary-fixed-dim">Pension Contribution</span><span class="">- ₦ 850,000</span></div><div class="flex justify-between text-body-sm font-body-sm"><span class="text-tertiary-fixed-dim">Health Insurance</span><span class="">- ₦ 120,000</span></div><div class="flex justify-between text-body-sm font-body-sm"><span class="text-tertiary-fixed-dim">Housing Fund Contribution</span><span class="">- ₦ 95,000</span></div></div>
+<div class="mt-6 pt-4 border-t border-white/30 flex justify-between items-end">
+<span class="text-label-md font-label-md">Final Tax Due</span>
+<span class="text-headline-md font-headline-md font-bold text-secondary-container">₦ 2,312,200</span>
+</div>
+</div>
+</div>
+<!-- TCC Upload Section -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-[#3B82F6]" data-icon="upload_file">upload_file</span>
+<h3 class="text-label-md font-label-md text-primary">TCC Requirements</h3>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-4">Upload supporting documents for your Tax Clearance Certificate application.</p>
+<div class="border-2 border-dashed border-[#E2E8F0] rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mb-3 group-hover:bg-[#E0F2FE] transition-colors">
+<span class="material-symbols-outlined text-outline group-hover:text-[#3B82F6]" data-icon="cloud_upload">cloud_upload</span>
+</div>
+<span class="text-label-md font-label-md text-primary mb-1">Upload WHT Receipts</span>
+<span class="text-label-sm font-label-sm text-outline">PDF, JPG up to 5MB</span>
+</div>
+<div class="mt-4 flex items-center gap-2 text-label-sm font-label-sm text-[#006c49] bg-[#d1fae5] p-2 rounded">
+<span class="material-symbols-outlined text-[16px]" data-icon="info">info</span>
+<span class="">Previous TCC uploaded successfully.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+
+
+</body></html>

@@ -127,33 +127,55 @@ differentiator — not deferred to post-MVP.
 18. Enforce the "only APPROVED transactions reach computation" invariant at the computation engine's
     input boundary (query filter), not scattered across callers.
 
-### Phase B4 — Tax computation engine (the core deliverable)
-19. New pure module, e.g. `backend/modules/tax_computation/engine.py`, implementing the four stages
-    in spec §6, taking a list of approved transactions + a tax year, returning a result object
-    (`total_income`, `total_deductions`, `total_reliefs`, `chargeable_income`, per-band breakdown,
-    `net_tax`).
-20. **Write tests first**: hand-computed scenarios across a few income levels (below ₦800k → zero tax;
-    a mid-band case spanning 2-3 bands; a case with rent relief capped at ₦500k; the minimum-wage
-    exemption case) — these tests *are* the spec's "accuracy testing" requirement, and they don't need
-    a database or any LLM, so they're fast and free to run constantly.
-21. Add `total_reliefs` column to `TaxComputation` (migration) since the current schema conflates
-    deductions and reliefs.
-22. `POST /tax-computations/{tax_year}/compute` endpoint calling the engine and persisting the result;
-    `GET /tax-computations/{tax_year}` to fetch the latest breakdown.
+### Phase B4 — Tax computation engine (the core deliverable) — DONE
+19. `backend/modules/tax_computation/engine.py` — pure module implementing spec §6's stages, taking a
+    list of approved transactions + a tax year, returning a result object (`total_income`,
+    `total_deductions`, `total_reliefs`, `total_capital_allowances`, `chargeable_income`, per-band
+    breakdown, `net_tax`).
+20. **Tests written first**: hand-computed scenarios across income levels (below ₦800k → zero tax; a
+    mid-band case spanning bands; rent relief capped at ₦500k; the minimum-wage exemption case; a
+    capital asset case) — no database, no LLM, fast and free to run constantly.
+21. `total_reliefs` and `total_capital_allowances` columns added to `TaxComputation` (the schema
+    originally conflated deductions/reliefs, and had no capital-allowance concept at all).
+22. `POST /tax-computations/{tax_year}/compute` / `GET /tax-computations/{tax_year}` endpoints.
+23. **Capital Asset Handling (First Schedule capital allowances) — mandatory, added mid-build.**
+    `backend/modules/tax_computation/capital_allowances.py` (pure: class → rate/useful-life table,
+    per-year allowance calc) + a real `Asset` model + `backend/modules/ingestion/asset_sync.py`, which
+    every write path that can set a transaction's category (AI ingestion, manual entry, review
+    corrections) calls to keep exactly one `Asset` row in sync with whether that transaction is
+    currently categorized as one. `GET /assets` (shows each asset's computed current-year allowance)
+    and `PATCH /assets/{id}/dispose`.
 
 ### Phase B5 — Reporting
 23. Report generation: assemble computation + transactions into a downloadable document (a simple
     server-rendered PDF, e.g. `weasyprint` or `reportlab` — pick whichever has the least setup friction;
     don't reach for a paid PDF-generation API). `TaxReport` row + `GET /tax-computations/{tax_year}/report`.
 
-### Phase B6 — AI Advisor (RAG) — build after B0–B5 are solid, since it's the least MVP-critical path
-24. Chunk + embed the NTA 2025 text (already read in full for this project — reuse that extraction
-    rather than re-parsing the PDF) into `pgvector` (enable the extension in the Postgres migration).
-25. `POST /advisory/query`: embed the question, similarity-search top-k chunks, call
-    `llm_service.generate_text` with retrieved context, log to `AIAdvisoryQuery`, return the answer +
-    cited sources.
-26. Tests mock the embedding/generation calls; a small manual/opt-in script (like `test_pipeline.py`)
-    can be used to sanity-check real retrieval quality by hand, not in CI.
+### Phase B6 — AI Advisor (RAG) — DONE
+24. `backend/modules/advisory/document_ingestion.py`: extracts a PDF page-by-page (`pdfplumber` →
+    `pymupdf` fallback, reusing the same tiered approach as statement parsing), chunks each page
+    (fixed-size with overlap, kept within a page so citations stay exact), embeds each chunk
+    (`gemini-embedding-001` — verified directly against the API; `text-embedding-004`, assumed at
+    first, turned out to be retired), stores into a new `knowledge_chunks` table (`pgvector`).
+    `backend/scripts/ingest_document.py` is the reusable CLI entry point — re-run it any time to add
+    or update a document; it replaces that `source_title`'s chunks rather than duplicating them.
+    **Local Docker must use the `pgvector/pgvector:pg15` image, not stock `postgres:15`** — the
+    extension isn't present otherwise (`docker-compose.yml` updated); Neon has it built in already.
+25. `backend/modules/advisory/retrieval.py`: embeds the question, cosine-similarity top-k against
+    `knowledge_chunks` (no ANN index needed at this corpus size). `backend/modules/advisory/
+    rag_advisor.py` builds the grounded prompt (system prompt explicitly forbids answering outside
+    the retrieved passages) and calls `llm_service.generate_text`.
+26. `POST /advisory/query` logs real citations (e.g. `"Nigeria Tax Act 2025 (p.30)"`) to
+    `AIAdvisoryQuery.retrieved_sources` as JSON, replacing the previous build's `"static_context_v1"`
+    placeholder marker.
+27. Tests mock `retrieve_relevant_chunks`/`generate_embedding`/`generate_text` at the module boundary
+    — `knowledge_chunks` uses a `pgvector` column type that doesn't compile under the SQLite test
+    engine, so it's excluded from the SQLite test schema entirely (see `tests/conftest.py`) rather
+    than exercised directly in the automated suite.
+28. Ingested the full Nigeria Tax Act 2025 gazette PDF as the primary (and, for now, only) knowledge
+    source — a real, necessary bulk call (~200+ embedding requests), not a wasted one. Added
+    exponential-backoff retry to `generate_embedding` specifically because a bulk ingestion job is
+    much more likely to hit free-tier rate limits than a single interactive call.
 
 ## 4. Frontend Build Plan
 

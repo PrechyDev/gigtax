@@ -112,6 +112,22 @@
     "tax_treatment": "100_percent_deductible_relief"
   },
   {
+    "classification": "Asset",
+    "category_name": "Computers, Cameras & Equipment",
+    "developer_slug": "asset_computer_equipment",
+    "description": "Capital purchases used over several years (laptops, cameras, general work equipment) — NTA 2025 First Schedule Class 2, written off at 20% per year rather than deducted in full immediately.",
+    "tax_treatment": "capital_allowance",
+    "asset_class": "class_2"
+  },
+  {
+    "classification": "Asset",
+    "category_name": "Vehicles & Other Capital Expenditure",
+    "developer_slug": "asset_other_capital",
+    "description": "Motor vehicles and other capital expenditure not covered elsewhere — NTA 2025 First Schedule Class 3, written off at 25% per year rather than deducted in full immediately.",
+    "tax_treatment": "capital_allowance",
+    "asset_class": "class_3"
+  },
+  {
     "classification": "Unknown",
     "category_name": "Uncategorized",
     "developer_slug": "uncategorized",

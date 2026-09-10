@@ -90,10 +90,17 @@ The system must accept, per upload action, **multiple files at once**, in any mi
   life assurance premiums, and **rent relief = 20% of annual rent paid, capped at ₦500,000/year**.
 - Receipts can be attached to a transaction for audit support (stored via user-controlled cloud
   storage, not centrally on the server — privacy-by-design).
-- Capital items (equipment, laptops, cameras) route to capital-allowance treatment rather than an
-  immediate expense deduction (First Schedule classes — **not required for MVP correctness**, but the
-  `Asset` concept from the report should not be silently miscategorized as a 100%-deductible expense;
-  flagging it for later handling is acceptable for MVP).
+- **Capital assets (equipment, laptops, cameras, vehicles) — mandatory MVP feature, not optional.**
+  Treating a capital purchase as a normal 100%-deductible expense would inflate that year's deductions
+  and understate tax owed, so these route to capital-allowance treatment instead: a fixed First
+  Schedule Table I percentage of the original cost is deducted each year (straight-line) — Class 1
+  10%/10yr (buildings, heavy transport), Class 2 20%/5yr (equipment, furniture — the common case for
+  this app's users: laptops, cameras, general gear), Class 3 25%/4yr (vehicles, other capital
+  expenditure) — until the asset is fully written down or disposed of, after which it contributes
+  nothing further. An `Asset` row is created automatically whenever a transaction's category resolves
+  to an Asset-classified category (whether from AI categorization, manual entry, or a human correcting
+  a category during review), keeping the `assets` table always in sync with each transaction's current
+  category.
 
 ### 3.5 Tax Computation Engine (deterministic — no LLM in the computation path)
 See §6 for the exact model. Must be a pure, independently testable module — given a set of approved
@@ -101,12 +108,22 @@ transactions + reliefs, always produces the same number. This is the one place a
 non-negotiable, so it has zero AI involvement at compute time (AI only assists earlier, at
 categorization).
 
-### 3.6 AI Tax Advisor (RAG)
-- Plain-language Q&A grounded in NTA 2025 text + vetted supplementary material via retrieval
-  (chunk → embed → vector search → inject as LLM context).
-- Logged as `AIAdvisoryQuery` (question, retrieved sources, answer, timestamp) for traceability.
-- Not required to gate MVP release if time is short (see Build Plan sequencing), but the data model
-  already supports it.
+### 3.6 AI Tax Advisor (RAG) — built
+- Plain-language Q&A grounded in real retrieval: the user's question is embedded
+  (`gemini-embedding-001`, 3072-dim), matched by cosine distance against a `knowledge_chunks` table,
+  and the top-k passages are injected as the LLM's only permitted context — the system prompt
+  explicitly forbids answering from outside knowledge and tells the model to say so plainly (and
+  suggest a licensed professional / State IRS) if the retrieved passages don't cover the question.
+- Logged as `AIAdvisoryQuery` (question, `retrieved_sources` as a JSON list of real citations like
+  `"Nigeria Tax Act 2025 (p.30)"`, answer, timestamp) for traceability.
+- **Knowledge base is extensible by design, not a one-time seed.** `backend/scripts/ingest_document.py`
+  extracts → chunks (page-bounded, so citations stay exact) → embeds → stores any PDF under a
+  `source_title`; re-running it for the same title replaces that document's chunks. Currently loaded:
+  the full Nigeria Tax Act 2025 gazette text. Adding a new supporting document later (a FIRS circular,
+  a state IRS guide) is the same one command against whichever database is currently in use — no
+  schema change, ever.
+- No ANN index (ivfflat/HNSW) — exact cosine search is fast enough at this corpus size (one Act's
+  worth of chunks); add one only if the knowledge base grows much larger.
 
 ### 3.7 Reporting & Filing Guidance
 - Generate a downloadable self-assessment report: income summary, deductions, reliefs, stage-by-stage
@@ -185,7 +202,7 @@ categorization).
 |---|---|---|
 | Backend framework | FastAPI (Python 3.10+) | already in place; async-friendly for file/LLM I/O |
 | ORM / DB | SQLAlchemy 2.0 + PostgreSQL 15 | already in place |
-| Migrations | Alembic | declared dependency, **not yet wired up** — first build-plan task |
+| Migrations | Alembic | wired up — one migration per schema change, `alembic upgrade head` |
 | Frontend | React + Vite + TypeScript | fast dev loop, free, matches report's committed choice |
 | Styling | Tailwind CSS | fast to build with, no design system overhead for an MVP |
 | Data fetching | TanStack Query (React Query) | handles loading/error/cache state without a heavy global store |
@@ -193,9 +210,10 @@ categorization).
 | PII sanitization | Microsoft Presidio | already in place, Nigeria-locale recognizers added |
 | LLM routing | `litellm` + `instructor` | already in place — structured Pydantic output + model-agnostic routing |
 | LLM provider | Google Gemini (free-tier API key) | zero-cost during development; see §5.3 for fallback cascade |
-| Vector store (RAG) | `pgvector` extension on the existing Postgres instance | **no separate vector DB service** — avoids a second piece of paid/managed infra; Postgres already required |
+| Vector store (RAG) | `pgvector` extension on the existing Postgres instance | **no separate vector DB service** — avoids a second piece of paid/managed infra; Postgres already required. Local dev needs the `pgvector/pgvector:pg15` Docker image (stock `postgres:15` doesn't ship the extension) — Neon has it built in for the deployed app |
+| Embeddings | `gemini-embedding-001` via `litellm` (3072-dim) | verified directly against the Gemini API before use — `text-embedding-004` (initially assumed) has been retired |
 | Document storage | Google Drive API (user's own account/quota) | already decided in the report — privacy-by-design *and* zero storage cost to the project |
-| Auth | FastAPI + `passlib`/`bcrypt` password hashing + JWT (e.g. `python-jose`) | simplest standard approach, no third-party auth service needed for MVP |
+| Auth | FastAPI + `bcrypt` (direct, not `passlib` — avoids a known `passlib`/`bcrypt>=4.1` compatibility warning) + `pyjwt` | simplest standard approach, no third-party auth service needed for MVP |
 | Drive integration | `google-auth`, `google-auth-oauthlib`, `google-api-python-client` (official Google libraries) + `cryptography` (Fernet) for encrypting stored refresh tokens | same GCP project as the Gemini API key can issue the OAuth client, one less thing to separately manage |
 
 ### 5.3 AI/LLM Strategy & Graceful Degradation
@@ -239,16 +257,21 @@ Existing ORM models (`backend/models/`) already cover the MVP's needs — see al
 - `CustomRule` — user keyword→category rules.
 - `Receipt` — linked to a transaction, `storage_path` (Drive reference), `file_type`.
 - `Category` — the NTA-2025-aligned taxonomy in `db/seed_data/categories.json` (Income / Expense /
-  Relief / Unknown classifications, each with a `tax_treatment` enum-like string).
-- `TaxComputation` — `total_income`, `total_deductions`, `taxable_income`, `estimated_tax_owed` per
-  `tax_year`. **Needs a `total_reliefs` field added** — the current schema conflates deductions and
-  reliefs, but NTA 2025 treats them as separate stages (see §6).
+  Relief / **Asset** / Unknown classifications), each with a `tax_treatment` enum-like string, plus
+  `asset_class` (`class_1`/`class_2`/`class_3`) for Asset-classified rows only.
+- `Asset` — a capital item (`cost`, `purchase_date`, `asset_class`, `disposed`/`disposed_date`),
+  optionally linked to the `Transaction` it originated from. Created automatically whenever a
+  transaction's category resolves to classification `Asset` — from AI ingestion, manual entry, or a
+  human correcting a category during review (see §6 Stage 2b).
+- `TaxComputation` — `total_income`, `total_deductions`, `total_reliefs`, `total_capital_allowances`,
+  `taxable_income`, `estimated_tax_owed` per `tax_year`.
 - `TaxReport` — generated report metadata (format, storage path).
 - `AIAdvisoryQuery` — question, retrieved sources, answer, timestamp.
 
 ## 6. Tax Computation Model (deterministic, NTA 2025-accurate)
 
-Four sequential stages, operating only on **approved** transactions for a given `tax_year`:
+Five sequential stages, operating only on **approved** transactions for a given `tax_year` (plus, for
+Stage 2b, every capital asset the user owns regardless of purchase year — see below):
 
 **Stage 1 — Total Income** (NTA 2025 s.28)
 Sum of all approved `IncomeRecord` amounts whose category `tax_treatment` is not
@@ -262,7 +285,25 @@ Sum of approved `ExpenseRecord` amounts whose category `tax_treatment` is a dedu
 `deductibility_percentage` where less than 100 (e.g. home-office-apportioned utilities). Categories
 marked as disallowed (capital expenditure, private/domestic, fines) are excluded entirely — the
 "wholly and exclusively to produce income" test (s.20) is enforced at the category level, not
-re-derived per transaction.
+re-derived per transaction. **Capital assets never appear here** — see Stage 2b.
+
+**Stage 2b — Capital Allowances (NTA 2025 First Schedule Table I) — mandatory, not optional**
+A capital item (laptop, camera, equipment, vehicle) is not a normal expense: deducting its full cost in
+its purchase year would inflate that year's deductions and understate tax owed. Instead, any
+transaction whose category classification is `Asset` creates a linked `Asset` row (cost, purchase date,
+asset class) and is *excluded* from Stage 2 entirely. Each year, every non-disposed `Asset` the user
+owns (bought this year or in an earlier one — depreciation spans years) contributes a straight-line
+allowance:
+
+| Class | Rate | Useful life | Covers |
+|---|---|---|---|
+| Class 1 | 10% | 10 years | Buildings, agriculture, masts, intangibles, heavy transport |
+| Class 2 | 20% | 5 years | Plant/equipment, furniture, mining, other equipment — the common case here: laptops, cameras, general work gear |
+| Class 3 | 25% | 4 years | Motor vehicles, software, other capital expenditure |
+
+`allowance_this_year = cost × rate` for each year from acquisition until fully written down or disposed
+of (whichever comes first); after that, the asset contributes nothing further. `total_capital_allowances
+= Σ` this figure across every active asset for the requested tax year.
 
 **Stage 3 — Statutory Reliefs** (NTA 2025 s.30(2))
 Sum of approved records whose category classification is `Relief`:
@@ -272,7 +313,7 @@ Sum of approved records whose category classification is `Relief`:
 
 **Stage 4 — Chargeable Income and Net Tax**
 ```
-chargeable_income = total_income − total_allowable_deductions − total_reliefs
+chargeable_income = total_income − total_allowable_deductions − total_capital_allowances − total_reliefs
 ```
 Apply the Fourth Schedule (s.58) progressive bands to `chargeable_income`, band by band:
 
@@ -333,7 +374,9 @@ what the report's "accuracy testing" evaluation step requires).
 **D. Tax computation**
 1. Triggered on demand (button) or automatically recomputed when the approved-transaction set for a
    tax year changes.
-2. Runs the pure Stage 1–4 model in §6 against all `APPROVED` transactions for that `tax_year`.
+2. Runs the pure Stage 1–4 model in §6 against all `APPROVED` transactions for that `tax_year`, plus
+   every `Asset` the user owns (not just ones purchased in that year — depreciation spans years) for
+   Stage 2b's capital allowances.
 3. Result persisted to `TaxComputation`, shown on the dashboard with full breakdown.
 
 **E. Advisory (RAG)** — user asks a question → embed query → similarity search over the NTA 2025
@@ -362,7 +405,8 @@ This is a student project on free tiers throughout — every choice above was ma
 
 - Company Income Tax, VAT, Capital Gains Tax, Presumptive Tax regime.
 - Filing automation (only guidance/link-out to state portals).
-- Capital allowance depreciation schedules for `Asset` records (flag and defer, don't miscompute).
+- Balancing charges/allowances on asset disposal (a disposed asset simply stops accruing further
+  allowance — no gain-on-disposal adjustment is computed).
 - Multi-currency / non-NGN handling beyond simple tagging.
 - Tax Vault beyond a simple derived estimate.
 

@@ -1,13 +1,20 @@
 import base64
 import logging
+import time
 import instructor
-from litellm import completion
+from litellm import completion, embedding
 from pydantic import BaseModel
 from typing import Type, Any, Optional
 
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# gemini-embedding-001 is the only Gemini embedding model currently available via the
+# Gemini API (text-embedding-004 has been retired) — verified with a real call before
+# wiring this up. 3072 dimensions is its default output_dimensionality.
+EMBEDDING_MODEL = "gemini/gemini-embedding-001"
+EMBEDDING_DIMENSIONS = 3072
 
 class LLMService:
     """
@@ -112,6 +119,29 @@ class LLMService:
             messages=messages
         )
         return response.choices[0].message.content
+
+    def generate_embedding(self, text: str, max_retries: int = 5) -> list[float]:
+        """Embeds a single string (a query, or one knowledge-base chunk) for RAG
+        retrieval. No fallback *model* here — there's only one Gemini embedding model
+        available, unlike the chat/vision models above — but bulk document ingestion
+        makes many calls back-to-back, so a rate limit (429) gets retried with
+        exponential backoff rather than aborting the whole ingestion run.
+        """
+        for attempt in range(max_retries):
+            try:
+                response = embedding(model=EMBEDDING_MODEL, input=[text])
+                return response.data[0]["embedding"]
+            except Exception as e:
+                error_msg = str(e).lower()
+                is_rate_limit = any(s in error_msg for s in ("429", "rate limit", "resourceexhausted", "quota"))
+                if is_rate_limit and attempt < max_retries - 1:
+                    wait_seconds = 2 ** attempt * 5  # 5s, 10s, 20s, 40s, ...
+                    logger.warning(f"Embedding rate-limited, retrying in {wait_seconds}s (attempt {attempt + 1}/{max_retries}).")
+                    time.sleep(wait_seconds)
+                    continue
+                logger.error(f"Embedding generation failed: {e}")
+                raise
+
 
 # Singleton instance to be imported across the application
 llm_service = LLMService()

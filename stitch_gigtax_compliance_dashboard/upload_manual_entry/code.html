@@ -1,0 +1,372 @@
+<!DOCTYPE html><html class="h-full" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GigTax - Data Ingestion</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f7f9fb",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-tertiary-container": "#3980f4",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f7f9fb",
+                        "tertiary-fixed-dim": "#adc6ff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-bright": "#f7f9fb",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#c6c6cd",
+                        "on-primary-container": "#7c839b",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d8dadc",
+                        "primary-container": "#131b2e",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-primary": "#bec6e0",
+                        "secondary-fixed": "#6ffbbe",
+                        "primary-fixed": "#dae2fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#005236",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "secondary": "#006c49",
+                        "on-primary-fixed": "#131b2e",
+                        "primary": "#000000",
+                        "tertiary-container": "#001a42",
+                        "on-surface-variant": "#45464d",
+                        "secondary-container": "#6cf8bb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "tertiary-fixed": "#d8e2ff",
+                        "secondary-fixed-dim": "#4edea3",
+                        "inverse-surface": "#2d3133",
+                        "on-background": "#191c1e",
+                        "outline": "#76777d",
+                        "surface-container": "#eceef0",
+                        "surface-tint": "#565e74",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#00714d",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed": "#002113"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "stack-sm": "4px",
+                        "stack-lg": "24px",
+                        "stack-md": "12px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Drag and drop zone active state */
+        .drag-active {
+            border-color: #3B82F6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        /* Custom scrollbar for modal */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f7f9fb;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e0e3e5;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #c6c6cd;
+        }
+    </style>
+</head>
+<body class="h-full bg-background text-on-background font-body-md antialiased overflow-hidden flex">
+<!-- SideNavBar (from JSON) -->
+<aside class="w-64 h-full fixed left-0 top-0 bg-surface-container-lowest dark:bg-surface-container-lowest shadow-sm flex flex-col h-full py-stack-lg px-gutter z-20 hidden md:flex">
+<div class="mb-stack-lg">
+<h1 class="text-headline-md font-headline-md font-bold text-primary dark:text-on-primary-fixed">GigTax</h1>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Freelancer Edition</p>
+</div>
+<nav class="flex-1 space-y-stack-sm">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-on-primary-fixed hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-label-md font-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-primary font-bold border-r-4 border-primary dark:text-on-primary-fixed dark:border-on-primary-fixed bg-surface-container-low active:scale-[0.98] transition-all" href="#">
+<span class="material-symbols-outlined fill" data-icon="account_balance_wallet" data-weight="fill" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Ledger</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-on-primary-fixed hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-label-md font-label-md">Assets</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-on-primary-fixed hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-label-md font-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-on-primary-fixed hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="text-label-md font-label-md">Advisor</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:text-primary dark:text-outline-variant dark:hover:text-on-primary-fixed hover:bg-surface-container-low transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-md font-label-md">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-stack-lg border-t border-surface-variant">
+<button class="w-full bg-[#3B82F6] text-white py-2 px-4 rounded-lg text-label-md font-label-md font-bold shadow hover:bg-blue-600 transition-colors mb-4">File Taxes Now</button>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-label-md font-label-md">Help Center</span>
+</a>
+<div class="flex items-center gap-3 mt-4 px-3">
+<img alt="User Profile Avatar" class="w-8 h-8 rounded-full object-cover" data-alt="A small, professional headshot of a Nigerian freelancer, well-lit, neutral expression, against a plain white background. Modern, corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtDJy5ZjIA6tGlk7gjwZeVAB8lpRM2amDVMecQFiaQvccN-pZD014c5qFdQeP7E6CbKbdy9vwAaIfBX2hXnZ1qJK1D3LuNZuvEu0LCdxV3RNUrTDP5LkuOmVyFs3cJmz_wZ2-z7GeLEJVZghrDbeIKUJ7VzQpvLDJLCWZIJx1nlLsKP5LJlSiMMayPFjOgYlqwgPL-sK77ZQXK5bXMtfBwI9uXsbkt8pfz9tTzWPO_hHKVY5aruiDOiQ">
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 w-full h-full overflow-hidden">
+<!-- TopAppBar (from JSON) -->
+<header class="bg-surface dark:bg-surface-dim border-b border-surface-variant dark:border-outline-variant flex justify-between items-center h-16 px-gutter w-full sticky top-0 z-10">
+<div class="flex items-center w-full md:w-auto">
+<button class="md:hidden mr-4 text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="relative w-full max-w-md hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full text-body-sm font-body-sm focus:ring-2 focus:ring-[#3B82F6]" placeholder="Search transactions, assets..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-secondary-container transition-colors active:opacity-80">
+<span class="material-symbols-outlined" data-icon="add_to_drive">add_to_drive</span>
+</button>
+<button class="hover:text-secondary-container transition-colors active:opacity-80 relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="hover:text-secondary-container transition-colors active:opacity-80 md:hidden">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop">
+<div class="max-w-container-max mx-auto">
+<div class="mb-stack-lg flex justify-between items-end">
+<div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg-mobile md:font-headline-lg text-primary">Data Ingestion</h2>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Upload statements or manually enter records.</p>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Drag and Drop Zone -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg flex flex-col h-[500px]">
+<h3 class="text-headline-md font-headline-md text-primary mb-stack-md">Upload Documents</h3>
+<div class="flex-1 border-2 border-dashed border-[#E2E8F0] rounded-xl flex flex-col items-center justify-center p-8 text-center transition-colors duration-200 hover:bg-surface-container-low cursor-pointer" id="drop-zone">
+<div class="w-16 h-16 bg-[#F2F4F6] rounded-full flex items-center justify-center mb-4 text-[#3B82F6]">
+<span class="material-symbols-outlined text-4xl" data-icon="cloud_upload">cloud_upload</span>
+</div>
+<h4 class="text-body-lg font-body-lg text-primary font-semibold mb-2">Drag &amp; Drop files here</h4>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-6 max-w-sm">Support for PDF, CSV, and Excel formats. Bank statements are automatically parsed.</p>
+<button class="bg-surface-container-lowest border border-[#E2E8F0] text-primary px-6 py-2 rounded-lg text-label-md font-label-md font-semibold hover:bg-surface-container-low transition-colors shadow-sm">
+                                Browse Files
+                            </button>
+</div>
+<div class="mt-stack-md">
+<h5 class="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Recent Uploads</h5>
+<div class="flex gap-4 overflow-x-auto pb-2">
+<!-- Ghost state for empty -->
+<div class="text-body-sm text-on-surface-variant italic">No recent uploads</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Manual Entry Trigger & Quick Stats -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<!-- Manual Entry Card -->
+<div class="bg-[#001a42] rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg relative overflow-hidden text-white h-48 flex flex-col justify-center">
+<!-- Subtle pattern overlay (no image) -->
+<div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"></div>
+<div class="relative z-10">
+<h3 class="text-headline-md font-headline-md mb-2">Manual Entry</h3>
+<p class="text-body-sm font-body-sm text-inverse-primary mb-6">Need to record a cash transaction or single receipt?</p>
+<button class="w-full bg-[#3B82F6] hover:bg-blue-600 text-white py-3 rounded-lg text-label-md font-label-md font-bold shadow transition-colors flex items-center justify-center gap-2" onclick="document.getElementById('manual-entry-modal').classList.remove('hidden')">
+<span class="material-symbols-outlined text-sm">add</span>
+                                    Add Record
+                                </button>
+</div>
+</div>
+<!-- Processing Status -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(15,23,42,0.05)] p-stack-lg flex-1">
+<h3 class="text-label-md font-label-md text-primary mb-stack-md flex items-center gap-2">
+<span class="material-symbols-outlined text-[#3B82F6]">sync</span>
+                                Processing Queue
+                            </h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">description</span>
+<div>
+<p class="text-label-sm font-label-sm text-primary">GTBank_Stmt_Oct.pdf</p>
+<p class="text-xs text-on-surface-variant">2.4 MB</p>
+</div>
+</div>
+<span class="bg-[#e6f4ea] text-[#137333] px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider">Done</span>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface-variant">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">table_view</span>
+<div>
+<p class="text-label-sm font-label-sm text-primary">Expenses_Q3.csv</p>
+<p class="text-xs text-on-surface-variant">156 KB</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-4 h-4 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin"></div>
+<span class="text-xs text-on-surface-variant">Processing...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Manual Entry Modal (Hidden by default) -->
+<div class="fixed inset-0 z-50 hidden bg-tertiary/50 backdrop-blur-sm flex items-center justify-center p-4" id="manual-entry-modal">
+<div class="bg-surface-container-lowest w-full max-w-2xl rounded-xl shadow-[0px_10px_30px_rgba(15,23,42,0.08)] overflow-hidden flex flex-col max-h-[921px]">
+<div class="px-stack-lg py-4 border-b border-surface-variant flex justify-between items-center">
+<h2 class="text-headline-md font-headline-md text-primary">Manual Entry</h2>
+<button class="text-on-surface-variant hover:text-primary transition-colors" onclick="document.getElementById('manual-entry-modal').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-stack-lg overflow-y-auto flex-1">
+<form class="space-y-stack-md">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div>
+<label class="block text-label-md font-label-md text-primary mb-1">Date</label>
+<input class="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg bg-surface text-body-md font-body-md focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] outline-none transition-colors" type="date">
+</div>
+<div>
+<label class="block text-label-md font-label-md text-primary mb-1">Amount (NGN)</label>
+<input class="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg bg-surface text-body-md font-body-md focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] outline-none transition-colors" placeholder="0.00" type="number">
+</div>
+</div>
+<div>
+<label class="block text-label-md font-label-md text-primary mb-1">Description</label>
+<input class="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg bg-surface text-body-md font-body-md focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] outline-none transition-colors" placeholder="e.g. Office Supplies" type="text">
+</div>
+<div>
+<label class="block text-label-md font-label-md text-primary mb-1">Category</label>
+<select class="w-full h-12 px-4 border border-[#E2E8F0] rounded-lg bg-surface text-body-md font-body-md focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6] outline-none transition-colors appearance-none">
+<option>Select a category...</option>
+<option>Software Subscriptions</option>
+<option>Equipment</option>
+<option>Travel &amp; Meals</option>
+<option>Professional Services</option>
+</select>
+</div>
+<div class="pt-2">
+<label class="block text-label-md font-label-md text-primary mb-1">Receipt Upload (Optional)</label>
+<div class="border border-dashed border-[#E2E8F0] rounded-lg p-4 flex items-center justify-center gap-3 bg-surface cursor-pointer hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">add_a_photo</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant">Click to upload receipt image</span>
+</div>
+</div>
+</form>
+</div>
+<div class="px-stack-lg py-4 border-t border-surface-variant bg-surface flex justify-end gap-3">
+<button class="px-6 py-2 border border-[#E2E8F0] rounded-lg text-label-md font-label-md text-primary hover:bg-surface-container-highest transition-colors" onclick="document.getElementById('manual-entry-modal').classList.add('hidden')">Cancel</button>
+<button class="px-6 py-2 bg-[#001a42] text-white rounded-lg text-label-md font-label-md font-bold shadow hover:bg-blue-900 transition-colors">Save Record</button>
+</div>
+</div>
+</div>
+<script>
+        // Simple drag and drop visual feedback
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('drag-active');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('drag-active');
+        }
+    </script>
+
+
+</body></html>

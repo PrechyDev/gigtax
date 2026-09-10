@@ -1,0 +1,13 @@
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class AdvisoryQueryRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+
+
+class AdvisoryQueryResponse(BaseModel):
+    query_id: UUID
+    answer: str
+    sources: list[str]

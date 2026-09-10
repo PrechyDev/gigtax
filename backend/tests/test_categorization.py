@@ -3,10 +3,10 @@ from unittest.mock import patch
 from modules.ai_categorization.categorization import categorize_transactions
 from modules.ai_categorization.schemas import ParsedTransaction, TransactionExtraction
 
-@patch('modules.ai_categorization.categorization.instructor.from_litellm')
-def test_categorize_transactions(mock_from_litellm):
-    # Setup mock
-    mock_client = mock_from_litellm.return_value
+@patch('modules.ai_categorization.categorization.llm_service.generate_structured_output')
+def test_categorize_transactions(mock_generate_structured_output):
+    # Setup mock — categorize_transactions calls llm_service.generate_structured_output
+    # directly (via the llm_service facade), not instructor/litellm at this layer.
     mock_response = TransactionExtraction(
         transactions=[
             ParsedTransaction(
@@ -19,7 +19,7 @@ def test_categorize_transactions(mock_from_litellm):
             )
         ]
     )
-    mock_client.chat.completions.create.return_value = mock_response
+    mock_generate_structured_output.return_value = mock_response
 
     # Call function
     sanitized_text = "2023-01-01 Uber Trip $15.00"

@@ -19,9 +19,15 @@ class User(Base):
     home_office_percentage = Column(Float, default=0.0) # E.g., 20.0 for 20%
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Google Drive BYOS (Bring Your Own Storage)
+    google_drive_connected = Column(Boolean, default=False)
+    google_refresh_token_encrypted = Column(String(500), nullable=True)
+    google_drive_folder_id = Column(String(255), nullable=True)
+
     # Relationships
     statements = relationship("StatementUpload", back_populates="user", cascade="all, delete-orphan")
     custom_rules = relationship("CustomRule", back_populates="user", cascade="all, delete-orphan")
     computations = relationship("TaxComputation", back_populates="user", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     advisory_queries = relationship("AIAdvisoryQuery", back_populates="user", cascade="all, delete-orphan")
+    assets = relationship("Asset", back_populates="user", cascade="all, delete-orphan")

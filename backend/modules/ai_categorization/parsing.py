@@ -1,8 +1,6 @@
 import pandas as pd
 import pdfplumber
 import pymupdf
-import pytesseract
-from PIL import Image
 import io
 import os
 from typing import Optional
@@ -66,6 +64,7 @@ def parse_pdf_pymupdf(file_bytes: bytes, password: Optional[str] = None) -> str:
         raise ParsingError(f"PyMuPDF failed: {e}")
 
 def parse_with_gemini(file_bytes: bytes, mime_type: str = "application/pdf") -> str:
+    """For scanned/complex PDFs: assumes the source is a tabular bank statement."""
     from services.llm_service import llm_service
     try:
         print("Extracting tabular data with LiteLLM Vision (gemini-3.5-flash fallback)...")
@@ -76,33 +75,84 @@ def parse_with_gemini(file_bytes: bytes, mime_type: str = "application/pdf") -> 
             "You are strictly forbidden from outputting the customer's name, physical address, phone numbers, or email addresses. "
             "Replace every single occurrence of a person's address, phone number or account number with the exact string '<REDACTED>, leaving names in transaction details and using those to mape income_source or merchant_name'."
         )
-        
+
         text = llm_service.generate_vision_text(
             prompt=prompt,
             system_prompt="You are a precise financial data extraction AI. Follow all extraction and security instructions perfectly.",
-            file_bytes=file_bytes, 
+            file_bytes=file_bytes,
             mime_type=mime_type
         )
-        
+
         if not text:
             raise ParsingError("LLM returned empty text.")
         return text
     except Exception as e:
         raise ParsingError(f"LiteLLM extraction failed: {e}")
 
+
+def parse_image_with_gemini(file_bytes: bytes, mime_type: str) -> str:
+    """For photos of handwritten/freeform income-expense notes (not a tabular statement).
+
+    There is no reliable local-OCR path for handwriting — Tesseract was tried and
+    abandoned on this project for hallucinating digits on real documents (see
+    docs/ai_categorization_architecture.md) — so every image goes straight here,
+    with a prompt tuned for loose/freeform notes rather than aligned table columns.
+    """
+    from services.llm_service import llm_service
+    try:
+        print("Extracting handwritten/freeform notes with Gemini Vision...")
+        prompt = (
+            "This image contains a handwritten or informally typed note listing income and/or "
+            "expense entries — it may not be a neat table. Read every entry you can make out and "
+            "output them as plain text lines, one entry per line, in the form: "
+            "`<date if present> - <description> - <amount>`. "
+            "If a date isn't written for an entry, omit it rather than guessing. "
+            "Do not skip entries because the handwriting is unclear — give your best reading rather "
+            "than omitting a line; never invent entries that aren't there. "
+            "CRITICAL SECURITY REQUIREMENT: redact all Personally Identifiable Information (PII) — "
+            "replace any physical address, phone number, or account number with the exact string "
+            "'<REDACTED>'. Names of people/businesses in a transaction description may stay, since "
+            "they're needed to identify the income source or merchant."
+        )
+
+        text = llm_service.generate_vision_text(
+            prompt=prompt,
+            system_prompt="You are a precise financial data extraction AI reading a handwritten note. Follow all extraction and security instructions perfectly.",
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+        )
+
+        if not text:
+            raise ParsingError("LLM returned empty text.")
+        return text
+    except Exception as e:
+        raise ParsingError(f"Gemini image extraction failed: {e}")
+
+
+IMAGE_MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+}
+
+
 def extract_text(file_bytes: bytes, filename: str, password: Optional[str] = None) -> str:
     """
     Main entry point for extracting text from a file.
     Tries fast local methods first, then falls back to cloud AI.
+    Images have no local-parsing path and go straight to Gemini Vision.
     """
     ext = os.path.splitext(filename)[1].lower()
-    
+
     if ext == ".csv":
         return parse_csv(file_bytes)
-            
+
     elif ext in [".xls", ".xlsx"]:
         return parse_excel(file_bytes)
-            
+
+    elif ext in IMAGE_MIME_TYPES:
+        return parse_image_with_gemini(file_bytes, mime_type=IMAGE_MIME_TYPES[ext])
+
     elif ext == ".pdf":
         # 1. Try pdfplumber
         try:
@@ -112,7 +162,7 @@ def extract_text(file_bytes: bytes, filename: str, password: Optional[str] = Non
             raise
         except ParsingError:
             pass
-            
+
         # 2. Try PyMuPDF
         try:
             print("Attempting PyMuPDF extraction...")
@@ -121,9 +171,9 @@ def extract_text(file_bytes: bytes, filename: str, password: Optional[str] = Non
             raise
         except ParsingError:
             pass
-            
+
         # 3. Fallback directly to Gemini for complex scanned tables
         print("Local text extraction failed. Attempting Gemini API...")
-        return parse_with_gemini(file_bytes)
-    
+        return parse_with_gemini(file_bytes, mime_type="application/pdf")
+
     raise ParsingError(f"Unsupported file format: {ext}")
