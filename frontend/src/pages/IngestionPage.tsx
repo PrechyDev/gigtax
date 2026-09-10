@@ -17,6 +17,15 @@ import { ApiError } from '../lib/apiClient'
 import { formatDateTime } from '../lib/formatters'
 
 const IN_FLIGHT_STATUSES = new Set(['PENDING', 'PROCESSING'])
+// Past this long still in flight, say so rather than let a spinner run silently —
+// batches share the free-tier AI quota and can genuinely take longer during busy
+// periods (see BATCH_STAGGER_SECONDS on the backend).
+const SLOW_PROCESSING_THRESHOLD_MS = 15_000
+
+function isTakingLonger(statement: { parsing_status: string; upload_date: string }): boolean {
+  if (!IN_FLIGHT_STATUSES.has(statement.parsing_status)) return false
+  return Date.now() - new Date(statement.upload_date).getTime() > SLOW_PROCESSING_THRESHOLD_MS
+}
 
 interface Toast {
   id: string
@@ -34,6 +43,7 @@ export function IngestionPage() {
   const [unlockTarget, setUnlockTarget] = useState<{ statementId: string; fileName: string } | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const previousStatusesRef = useRef<Map<string, string>>(new Map())
+  const [, forceTick] = useState(0)
 
   const statementsQuery = useQuery({
     queryKey: ['statements'],
@@ -43,6 +53,16 @@ export function IngestionPage() {
     // completion toasts update on their own, no manual refresh needed.
     refetchInterval: (query) => (query.state.data?.some((s) => IN_FLIGHT_STATUSES.has(s.parsing_status)) ? 3000 : false),
   })
+
+  // A poll whose response is byte-identical to the last one doesn't necessarily
+  // trigger a re-render on its own — but "taking longer than usual" is purely a
+  // function of elapsed time, not of the data changing, so tick independently of the
+  // query while anything is still in flight.
+  useEffect(() => {
+    if (!statementsQuery.data?.some((s) => IN_FLIGHT_STATUSES.has(s.parsing_status))) return
+    const interval = setInterval(() => forceTick((t) => t + 1), 3000)
+    return () => clearInterval(interval)
+  }, [statementsQuery.data])
 
   // Detects a file finishing (PROCESSING -> COMPLETED/FAILED/LOCKED) between polls
   // and surfaces a dismissible notification for it, independent of any other file
@@ -209,6 +229,11 @@ export function IngestionPage() {
                       </p>
                       {statement.parsing_status === 'FAILED' && statement.error_message && (
                         <p className="mt-0.5 text-xs text-error">{statement.error_message}</p>
+                      )}
+                      {isTakingLonger(statement) && (
+                        <p className="mt-0.5 text-xs text-on-surface-variant">
+                          Still working — this can take longer during busy periods.
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">

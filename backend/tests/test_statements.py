@@ -161,6 +161,38 @@ def test_retry_with_still_wrong_password_returns_423(mock_process, client, run_b
     assert retry_response.status_code == 423
 
 
+def test_batch_upload_staggers_background_start_times(client):
+    """A batch of several files must not all hit the LLM within the same second or
+    two — see BATCH_STAGGER_SECONDS in api/routes/statements.py. Checked here at the
+    EXECUTOR.submit call level (not via run_background_inline, which would actually
+    sleep) so the test stays instant.
+    """
+    headers = _auth_header(client, "stmt-user-stagger@example.com")
+
+    with patch("api.routes.statements.EXECUTOR") as mock_executor:
+        client.post(
+            "/statements",
+            files=[
+                ("files", _csv_file("a.csv")),
+                ("files", _csv_file("b.csv")),
+                ("files", _csv_file("c.csv")),
+            ],
+            headers=headers,
+        )
+
+    stagger_values = [call.kwargs["stagger_seconds"] for call in mock_executor.submit.call_args_list]
+    assert stagger_values == [0, 1.5, 3.0]
+
+
+def test_single_file_upload_has_no_stagger(client):
+    headers = _auth_header(client, "stmt-user-nostagger@example.com")
+
+    with patch("api.routes.statements.EXECUTOR") as mock_executor:
+        client.post("/statements", files={"files": _csv_file("solo.csv")}, headers=headers)
+
+    assert mock_executor.submit.call_args_list[0].kwargs["stagger_seconds"] == 0
+
+
 def test_statements_require_auth(client):
     response = client.post("/statements", files={"files": _csv_file()})
     assert response.status_code == 401

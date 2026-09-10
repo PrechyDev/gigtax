@@ -88,7 +88,8 @@ def run_background_inline(test_engine):
     TestSessionLocal = sessionmaker(bind=test_engine)
 
     def fake_submit(fn, *args, **kwargs):
-        with patch("api.routes.statements.SessionLocal", TestSessionLocal):
+        with patch("api.routes.statements.SessionLocal", TestSessionLocal), \
+             patch("api.routes.statements.time.sleep"):  # skip the real batch-stagger delay in tests
             fn(*args, **kwargs)
         return None
 

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
@@ -25,6 +26,12 @@ logger = get_logger("api.statements")
 AI_SERVICE_UNAVAILABLE_MESSAGE = (
     "Our document processing service is temporarily unavailable. Please try again in a few minutes."
 )
+
+# A batch of several files submitted at once otherwise all hit the LLM within the same
+# second or two — exactly what exhausts the free-tier rate limit fastest (see
+# _process_one_file_background). Spacing their actual start times out gives the
+# fallback cascade more headroom. A single-file upload is unaffected (its stagger is 0).
+BATCH_STAGGER_SECONDS = 1.5
 
 EXTENSION_TO_SOURCE_TYPE = {
     ".csv": "csv",
@@ -129,12 +136,22 @@ def _process_one_file_background(
     user_id: UUID,
     predefined_categories: str,
     custom_rules: str,
+    stagger_seconds: float = 0.0,
 ) -> None:
     """Runs on a background thread (see core/background.py) — opens its own DB
     session since the request's session is closed by the time this runs. One file's
     processing here never blocks another file's, or the HTTP response that already
     returned before this even starts.
+
+    `stagger_seconds` delays this file's actual processing start (see
+    upload_statements) — a batch of several files submitted at once otherwise all hit
+    the LLM within the same second or two, which is exactly what exhausts the free-tier
+    rate limit fastest. The delay happens here, on the background thread, never in the
+    request handler, so the HTTP response is still immediate regardless of batch size.
     """
+    if stagger_seconds > 0:
+        time.sleep(stagger_seconds)
+
     db = SessionLocal()
     try:
         statement = db.query(StatementUpload).filter(StatementUpload.statement_id == statement_id).first()
@@ -162,7 +179,7 @@ def upload_statements(
     custom_rules = build_custom_rules_text(db, current_user.user_id)
 
     results = []
-    for upload in files:
+    for index, upload in enumerate(files):
         file_bytes = upload.file.read()
         statement = StatementUpload(
             user_id=current_user.user_id,
@@ -179,6 +196,7 @@ def upload_statements(
             _process_one_file_background,
             statement.statement_id, file_bytes, upload.filename, current_user.user_id,
             predefined_categories, custom_rules,
+            stagger_seconds=index * BATCH_STAGGER_SECONDS,
         )
 
         results.append(StatementFileResult(
