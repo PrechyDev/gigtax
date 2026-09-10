@@ -27,6 +27,16 @@ def connect(current_user: User = Depends(get_current_user_allow_query_token)):
     # unexpected failure (e.g. misconfigured OAuth client secrets) it must still
     # redirect, with an error flag the frontend can show a friendly banner for,
     # rather than leaving the user staring at a raw 500 mid-flow.
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        # build_auth_flow doesn't raise for a missing client id/secret — it silently
+        # builds a URL with "client_id=None" that Google is guaranteed to reject. Catch
+        # it here, before ever redirecting, rather than sending the user to a dead page.
+        logger.error(
+            "Google Drive OAuth is not configured (missing client id/secret) — refusing to redirect user_id=%s",
+            current_user.user_id,
+        )
+        return RedirectResponse(f"{settings.FRONTEND_URL}/settings?drive=error")
+
     try:
         # The callback is a plain browser redirect from Google with no Authorization
         # header, so we can't rely on get_current_user there — instead we smuggle the

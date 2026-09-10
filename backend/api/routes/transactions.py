@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from api.deps import get_current_user
 from db.session import get_db
+from models.asset import Asset
 from models.category import Category
 from models.transaction import ExpenseRecord, IncomeRecord, Transaction
 from models.user import User
@@ -132,6 +133,12 @@ def delete_transaction(
     )
     if transaction is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
+
+    # A capital-item purchase has a linked Asset row (see modules/ingestion/asset_sync.py) —
+    # remove it first, or the DB's foreign key rejects the delete outright.
+    linked_asset = db.query(Asset).filter(Asset.transaction_id == transaction_id).first()
+    if linked_asset is not None:
+        db.delete(linked_asset)
 
     db.delete(transaction)
     db.commit()

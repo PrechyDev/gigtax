@@ -14,7 +14,9 @@ def _register(client, email="drive-user@example.com"):
 def test_connect_redirects_to_google_with_signed_state(client):
     token = _register(client)
 
-    with patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
+    with patch("api.routes.google_drive.settings.GOOGLE_CLIENT_ID", "test-client-id"), \
+         patch("api.routes.google_drive.settings.GOOGLE_CLIENT_SECRET", "test-client-secret"), \
+         patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("https://accounts.google.com/o/oauth2/auth?mock=1", None)
         mock_build_flow.return_value = mock_flow
@@ -35,7 +37,9 @@ def test_connect_redirects_to_google_with_signed_state(client):
 def test_connect_redirects_to_settings_with_error_flag_on_unexpected_failure(client):
     token = _register(client, "drive-user-error@example.com")
 
-    with patch("api.routes.google_drive.build_auth_flow", side_effect=RuntimeError("misconfigured client secrets")):
+    with patch("api.routes.google_drive.settings.GOOGLE_CLIENT_ID", "test-client-id"), \
+         patch("api.routes.google_drive.settings.GOOGLE_CLIENT_SECRET", "test-client-secret"), \
+         patch("api.routes.google_drive.build_auth_flow", side_effect=RuntimeError("transient failure")):
         response = client.get(
             "/auth/google/connect",
             headers={"Authorization": f"Bearer {token}"},
@@ -44,6 +48,24 @@ def test_connect_redirects_to_settings_with_error_flag_on_unexpected_failure(cli
 
     assert response.status_code in (302, 307)
     assert "drive=error" in response.headers["location"]
+
+
+def test_connect_redirects_to_error_when_oauth_not_configured(client):
+    token = _register(client, "drive-user-unconfigured@example.com")
+
+    with patch("api.routes.google_drive.settings.GOOGLE_CLIENT_ID", None), \
+         patch("api.routes.google_drive.settings.GOOGLE_CLIENT_SECRET", None), \
+         patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
+        response = client.get(
+            "/auth/google/connect",
+            headers={"Authorization": f"Bearer {token}"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code in (302, 307)
+    assert "drive=error" in response.headers["location"]
+    # Never even attempted to build a flow with a missing client id/secret.
+    mock_build_flow.assert_not_called()
 
 
 def test_connect_requires_auth(client):
@@ -57,7 +79,9 @@ def test_connect_accepts_token_via_query_param(client):
     # relies on for that one redirect.
     token = _register(client, "drive-user-query@example.com")
 
-    with patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
+    with patch("api.routes.google_drive.settings.GOOGLE_CLIENT_ID", "test-client-id"), \
+         patch("api.routes.google_drive.settings.GOOGLE_CLIENT_SECRET", "test-client-secret"), \
+         patch("api.routes.google_drive.build_auth_flow") as mock_build_flow:
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("https://accounts.google.com/o/oauth2/auth?mock=1", None)
         mock_build_flow.return_value = mock_flow
@@ -79,7 +103,9 @@ def test_callback_persists_encrypted_refresh_token_and_marks_connected(client, d
 
     # Build a real, valid state for this user (mirrors what /connect would have produced).
     connect_response_state = None
-    with patch("api.routes.google_drive.build_auth_flow") as mock_build_flow_for_connect:
+    with patch("api.routes.google_drive.settings.GOOGLE_CLIENT_ID", "test-client-id"), \
+         patch("api.routes.google_drive.settings.GOOGLE_CLIENT_SECRET", "test-client-secret"), \
+         patch("api.routes.google_drive.build_auth_flow") as mock_build_flow_for_connect:
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("https://accounts.google.com/mock", None)
         mock_build_flow_for_connect.return_value = mock_flow

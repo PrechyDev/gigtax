@@ -96,7 +96,11 @@ export function LedgerPage() {
 
   function handleBulkDelete() {
     const ids = Array.from(selectedIds)
-    if (window.confirm(`Delete ${ids.length} transaction(s)? This cannot be undone.`)) {
+    if (
+      window.confirm(
+        `Delete ${ids.length} transaction(s)? Any linked capital assets will be removed too. This cannot be undone.`,
+      )
+    ) {
       bulkDeleteMutation.mutate(ids)
     }
   }

@@ -125,6 +125,25 @@ def test_delete_transaction_removes_it(client):
     assert list_response.json() == []
 
 
+def test_delete_transaction_removes_its_linked_asset_too(client):
+    headers = _auth_header(client, "tx-user10@example.com")
+    create_response = client.post("/transactions", json={
+        "transaction_type": "expense",
+        "date": "2026-02-01T00:00:00Z",
+        "description": "New laptop",
+        "amount": 500000,
+        "category_slug": "asset_computer_equipment",
+    }, headers=headers)
+    transaction_id = create_response.json()["transaction_id"]
+    assert client.get("/assets", headers=headers).json() != []
+
+    delete_response = client.delete(f"/transactions/{transaction_id}", headers=headers)
+    assert delete_response.status_code == 204
+
+    assert client.get("/transactions", headers=headers).json() == []
+    assert client.get("/assets", headers=headers).json() == []
+
+
 def test_delete_transaction_requires_ownership(client):
     headers_a = _auth_header(client, "tx-user8@example.com")
     headers_b = _auth_header(client, "tx-user9@example.com")
