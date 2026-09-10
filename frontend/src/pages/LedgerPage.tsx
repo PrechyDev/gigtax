@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { listCategories, type Category } from '../api/categories'
 import { groupCategoriesForType } from '../lib/categoryLabels'
 import {
@@ -43,11 +44,23 @@ function filtersForTab(tab: LedgerTab): TransactionFilters {
 }
 
 const PAGE_SIZE = 50
+const VALID_TABS = new Set(LEDGER_TABS.map((t) => t.id))
+
+function isLedgerTab(value: string | null): value is LedgerTab {
+  return value !== null && VALID_TABS.has(value as LedgerTab)
+}
 
 export function LedgerPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<LedgerTab>('all')
+  const [searchParams] = useSearchParams()
+  // Lets the dashboard's "N awaiting your review" link land straight on the right
+  // tab (/ledger?tab=pending) instead of just the page in its default state.
+  const [tab, setTab] = useState<LedgerTab>(() => {
+    const fromUrl = searchParams.get('tab')
+    return isLedgerTab(fromUrl) ? fromUrl : 'all'
+  })
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -208,7 +221,11 @@ export function LedgerPage() {
         <ErrorBanner message="Could not load your transactions." onRetry={() => transactionsQuery.refetch()} />
       )}
       {!transactionsQuery.isLoading && rows.length === 0 && (
-        <EmptyState icon="receipt_long" message="No transactions yet — upload a statement or add one manually." />
+        <EmptyState
+          icon="receipt_long"
+          message="No transactions yet — upload a statement or add one manually."
+          action={{ label: 'Go to Ingestion', onClick: () => navigate('/ingestion') }}
+        />
       )}
 
       {rows.length > 0 && (
@@ -535,7 +552,10 @@ function ReceiptsPanel({ transactionId }: { transactionId: string }) {
   if (!user?.google_drive_connected) {
     return (
       <p className="text-sm text-on-surface-variant">
-        Connect Google Drive in Settings to attach receipts to transactions.
+        <Link to="/settings" className="font-semibold text-blue hover:underline">
+          Connect Google Drive in Settings
+        </Link>{' '}
+        to attach receipts to transactions.
       </p>
     )
   }

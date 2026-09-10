@@ -28,7 +28,8 @@ def test_dashboard_flags_drive_not_connected(client):
     response = client.get("/dashboard", params={"tax_year": "2026"}, headers=headers)
     body = response.json()
     assert body["google_drive_connected"] is False
-    assert any("Google Drive" in action for action in body["outstanding_actions"])
+    action = next(a for a in body["outstanding_actions"] if "Google Drive" in a["message"])
+    assert action["href"] == "/settings"
 
 
 def test_dashboard_counts_pending_review_items(client):
@@ -41,8 +42,10 @@ def test_dashboard_counts_pending_review_items(client):
     client.patch(f"/transactions/{transaction_id}", json={"review_status": "pending"}, headers=headers)
 
     response = client.get("/dashboard", params={"tax_year": "2026"}, headers=headers)
-    assert response.json()["pending_review_count"] == 1
-    assert any("awaiting your review" in action for action in response.json()["outstanding_actions"])
+    body = response.json()
+    assert body["pending_review_count"] == 1
+    action = next(a for a in body["outstanding_actions"] if "awaiting your review" in a["message"])
+    assert action["href"] == "/ledger?tab=pending"
 
 
 def test_dashboard_counts_approved_expenses_missing_receipts(client):

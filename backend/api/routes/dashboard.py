@@ -9,7 +9,7 @@ from models.transaction import ExpenseRecord, Transaction
 from models.user import User
 from modules.tax_computation.engine import compute_tax
 from modules.tax_computation.loader import load_capital_allowances_for_year, load_categorized_transactions
-from schemas.dashboard import DashboardOut
+from schemas.dashboard import ActionItemOut, DashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -82,13 +82,21 @@ def get_dashboard(
 
     outstanding_actions = []
     if not current_user.google_drive_connected:
-        outstanding_actions.append("Connect Google Drive to enable receipt uploads and backups.")
+        outstanding_actions.append(ActionItemOut(
+            message="Connect Google Drive to enable receipt uploads and backups.", href="/settings",
+        ))
     if pending_review_count:
-        outstanding_actions.append(f"{pending_review_count} transaction(s) awaiting your review.")
+        outstanding_actions.append(ActionItemOut(
+            message=f"{pending_review_count} transaction(s) awaiting your review.", href="/ledger?tab=pending",
+        ))
     if locked_statements_count:
-        outstanding_actions.append(f"{locked_statements_count} uploaded statement(s) need a password.")
+        outstanding_actions.append(ActionItemOut(
+            message=f"{locked_statements_count} uploaded statement(s) need a password.", href="/ingestion",
+        ))
     if missing_receipts_count:
-        outstanding_actions.append(f"{missing_receipts_count} approved expense(s) have no receipt attached.")
+        outstanding_actions.append(ActionItemOut(
+            message=f"{missing_receipts_count} approved expense(s) have no receipt attached.", href="/ledger",
+        ))
 
     return DashboardOut(
         tax_year=tax_year,

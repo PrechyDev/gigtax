@@ -40,6 +40,11 @@ export async function downloadReport(taxYear: string): Promise<Blob> {
   return apiFetch<Blob>(`/tax-computations/${taxYear}/report`)
 }
 
+export interface ActionItem {
+  message: string
+  href: string
+}
+
 export interface DashboardData {
   tax_year: string
   total_income: number
@@ -52,7 +57,7 @@ export interface DashboardData {
   missing_receipts_count: number
   google_drive_connected: boolean
   filing_guidance: string
-  outstanding_actions: string[]
+  outstanding_actions: ActionItem[]
 }
 
 export function getDashboard(taxYear: string) {

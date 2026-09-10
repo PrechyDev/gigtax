@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { getDashboard } from '../api/tax'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
@@ -55,9 +56,14 @@ export function DashboardPage() {
             {data.outstanding_actions.length > 0 ? (
               <ul className="space-y-2">
                 {data.outstanding_actions.map((action) => (
-                  <li key={action} className="flex items-start gap-2 text-sm text-on-surface-variant">
-                    <span className="material-symbols-outlined text-lg text-blue">arrow_right</span>
-                    {action}
+                  <li key={action.href + action.message}>
+                    <Link
+                      to={action.href}
+                      className="flex items-start gap-2 text-sm text-on-surface-variant hover:text-blue-dark hover:underline"
+                    >
+                      <span className="material-symbols-outlined text-lg text-blue">arrow_right</span>
+                      {action.message}
+                    </Link>
                   </li>
                 ))}
               </ul>

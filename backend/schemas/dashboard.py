@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
 
+class ActionItemOut(BaseModel):
+    message: str
+    href: str
+
+
 class DashboardOut(BaseModel):
     tax_year: str
     total_income: float
@@ -13,4 +18,4 @@ class DashboardOut(BaseModel):
     missing_receipts_count: int
     google_drive_connected: bool
     filing_guidance: str
-    outstanding_actions: list[str]
+    outstanding_actions: list[ActionItemOut]
