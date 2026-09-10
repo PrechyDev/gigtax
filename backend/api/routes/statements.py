@@ -3,12 +3,15 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from api.deps import get_current_user
+from core.background import EXECUTOR
 from core.logger import get_logger
-from db.session import get_db
+from db.session import SessionLocal, get_db
 from models.statement import ParsingStatus, StatementUpload
+from models.transaction import Transaction
 from models.user import User
 from modules.ai_categorization.main import process_bank_statement
 from modules.ai_categorization.parsing import ParsingError, PasswordRequiredError
@@ -115,15 +118,41 @@ def _process_one_file(
         )
 
 
-@router.post("", response_model=StatementBatchResponse, status_code=status.HTTP_201_CREATED)
+def _process_one_file_background(
+    statement_id: UUID,
+    file_bytes: bytes,
+    filename: str,
+    user_id: UUID,
+    predefined_categories: str,
+    custom_rules: str,
+) -> None:
+    """Runs on a background thread (see core/background.py) — opens its own DB
+    session since the request's session is closed by the time this runs. One file's
+    processing here never blocks another file's, or the HTTP response that already
+    returned before this even starts.
+    """
+    db = SessionLocal()
+    try:
+        statement = db.query(StatementUpload).filter(StatementUpload.statement_id == statement_id).first()
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if statement is None or user is None:
+            return  # nothing sensible to do if either vanished between submit and run
+        _process_one_file(db, statement, file_bytes, filename, user, predefined_categories, custom_rules)
+    finally:
+        db.close()
+
+
+@router.post("", response_model=StatementBatchResponse, status_code=status.HTTP_202_ACCEPTED)
 def upload_statements(
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Accepts multiple files in one request (any mix of CSV/Excel/PDF/JPG/PNG). Each
-    file gets its own StatementUpload row and is processed independently — one file
-    failing or needing a password never fails the rest of the batch.
+    """Accepts multiple files in one request (any mix of CSV/Excel/PDF/JPG/PNG).
+    Returns immediately with each file PROCESSING — actual parsing/categorization
+    happens on a background thread per file (core/background.py), so a slow or
+    retrying file never blocks the others or the response itself. Poll GET
+    /statements to see each file's status settle to COMPLETED/FAILED/LOCKED.
     """
     predefined_categories = build_predefined_categories_text(db)
     custom_rules = build_custom_rules_text(db, current_user.user_id)
@@ -139,11 +168,19 @@ def upload_statements(
             source_type=_source_type_for(upload.filename),
         )
         db.add(statement)
-        db.flush()  # assigns statement.statement_id without ending the transaction
+        db.commit()  # must be committed, not just flushed — the background thread
+        db.refresh(statement)  # reads through its own connection/session
 
-        results.append(_process_one_file(
-            db, statement, file_bytes, upload.filename, current_user,
+        EXECUTOR.submit(
+            _process_one_file_background,
+            statement.statement_id, file_bytes, upload.filename, current_user.user_id,
             predefined_categories, custom_rules,
+        )
+
+        results.append(StatementFileResult(
+            statement_id=statement.statement_id,
+            file_name=upload.filename,
+            status=ParsingStatus.PROCESSING.value,
         ))
 
     return StatementBatchResponse(results=results)
@@ -155,12 +192,31 @@ def list_statements(
     current_user: User = Depends(get_current_user),
 ):
     """Powers the ingestion page's recent-uploads/processing-queue list."""
-    return (
+    statements = (
         db.query(StatementUpload)
         .filter(StatementUpload.user_id == current_user.user_id)
         .order_by(StatementUpload.upload_date.desc())
         .all()
     )
+
+    counts = dict(
+        db.query(Transaction.statement_id, func.count())
+        .filter(Transaction.statement_id.in_([s.statement_id for s in statements]))
+        .group_by(Transaction.statement_id)
+        .all()
+    ) if statements else {}
+
+    return [
+        StatementListItem(
+            statement_id=s.statement_id,
+            file_name=s.file_name,
+            source_type=s.source_type,
+            parsing_status=s.parsing_status,
+            upload_date=s.upload_date,
+            transactions_created=counts.get(s.statement_id, 0),
+        )
+        for s in statements
+    ]
 
 
 @router.post("/{statement_id}/retry", response_model=StatementFileResult)

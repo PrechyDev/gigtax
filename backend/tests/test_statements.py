@@ -17,8 +17,12 @@ def _csv_file(name="statement.csv"):
     return (name, io.BytesIO(b"Date,Description,Amount\n2026-01-05,Client payment,50000\n"), "text/csv")
 
 
+def _statement_by_name(client, headers, file_name):
+    return next(s for s in client.get("/statements", headers=headers).json() if s["file_name"] == file_name)
+
+
 @patch("api.routes.statements.process_bank_statement")
-def test_upload_single_file_persists_transactions(mock_process, client):
+def test_upload_accepts_immediately_then_processes_in_background(mock_process, client, run_background_inline):
     headers = _auth_header(client)
     mock_process.return_value = [
         ParsedTransaction(
@@ -28,17 +32,18 @@ def test_upload_single_file_persists_transactions(mock_process, client):
         )
     ]
 
-    response = client.post(
-        "/statements",
-        files={"files": _csv_file()},
-        headers=headers,
-    )
+    response = client.post("/statements", files={"files": _csv_file()}, headers=headers)
 
-    assert response.status_code == 201
-    results = response.json()["results"]
-    assert len(results) == 1
-    assert results[0]["status"] == "COMPLETED"
-    assert results[0]["transactions_created"] == 1
+    # The endpoint itself must return immediately with an acceptance status, not the
+    # final outcome — processing happens on the (here, inlined-for-testing) background thread.
+    assert response.status_code == 202
+    assert response.json()["results"][0]["status"] == "PROCESSING"
+
+    # By the time we get here, run_background_inline has already run the real
+    # processing function synchronously, so the eventual state is visible immediately.
+    statement = _statement_by_name(client, headers, "statement.csv")
+    assert statement["parsing_status"] == "COMPLETED"
+    assert statement["transactions_created"] == 1
 
     listing = client.get("/transactions", headers=headers).json()
     assert len(listing) == 1
@@ -46,7 +51,7 @@ def test_upload_single_file_persists_transactions(mock_process, client):
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_upload_multiple_files_one_locked_does_not_fail_batch(mock_process, client):
+def test_upload_multiple_files_one_locked_does_not_fail_batch(mock_process, client, run_background_inline):
     headers = _auth_header(client, "stmt-user2@example.com")
 
     def side_effect(*args, **kwargs):
@@ -70,29 +75,37 @@ def test_upload_multiple_files_one_locked_does_not_fail_batch(mock_process, clie
         ],
         headers=headers,
     )
+    assert response.status_code == 202
 
-    assert response.status_code == 201
-    results = {r["file_name"]: r for r in response.json()["results"]}
-    assert results["ok.csv"]["status"] == "COMPLETED"
-    assert results["locked.pdf"]["status"] == "LOCKED"
-    assert results["locked.pdf"]["requires_password"] is True
+    assert _statement_by_name(client, headers, "ok.csv")["parsing_status"] == "COMPLETED"
+    assert _statement_by_name(client, headers, "locked.pdf")["parsing_status"] == "LOCKED"
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_upload_parsing_error_marks_file_failed_not_whole_batch(mock_process, client):
+def test_upload_parsing_error_marks_file_failed_not_whole_batch(mock_process, client, run_background_inline):
     headers = _auth_header(client, "stmt-user3@example.com")
     mock_process.side_effect = ParsingError("corrupt file")
 
     response = client.post("/statements", files={"files": _csv_file("bad.csv")}, headers=headers)
+    assert response.status_code == 202
 
-    assert response.status_code == 201
-    result = response.json()["results"][0]
-    assert result["status"] == "FAILED"
-    assert "corrupt file" in result["error"]
+    statement = _statement_by_name(client, headers, "bad.csv")
+    assert statement["parsing_status"] == "FAILED"
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_retry_with_correct_password_completes(mock_process, client):
+def test_upload_generic_llm_failure_marks_failed_with_friendly_message(mock_process, client, run_background_inline):
+    headers = _auth_header(client, "stmt-user3b@example.com")
+    mock_process.side_effect = RuntimeError("litellm.ServiceUnavailableError: 503 high demand")
+
+    client.post("/statements", files={"files": _csv_file("overloaded.csv")}, headers=headers)
+
+    statement = _statement_by_name(client, headers, "overloaded.csv")
+    assert statement["parsing_status"] == "FAILED"
+
+
+@patch("api.routes.statements.process_bank_statement")
+def test_retry_with_correct_password_completes(mock_process, client, run_background_inline):
     headers = _auth_header(client, "stmt-user4@example.com")
     mock_process.side_effect = PasswordRequiredError("locked")
 
@@ -124,7 +137,7 @@ def test_retry_with_correct_password_completes(mock_process, client):
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_retry_with_still_wrong_password_returns_423(mock_process, client):
+def test_retry_with_still_wrong_password_returns_423(mock_process, client, run_background_inline):
     headers = _auth_header(client, "stmt-user5@example.com")
     mock_process.side_effect = PasswordRequiredError("locked")
 

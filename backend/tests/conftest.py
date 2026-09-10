@@ -4,6 +4,7 @@ real Postgres connection or a real external network call.
 """
 import json
 import os
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine, event
@@ -22,7 +23,11 @@ CATEGORIES_SEED_FILE = os.path.join(
 
 
 @pytest.fixture()
-def db_session():
+def test_engine():
+    """Exposed separately from db_session so tests can build additional sessions bound
+    to the same in-memory DB — needed for code (like statement background processing)
+    that opens its own SessionLocal() rather than using the get_db dependency.
+    """
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -39,7 +44,17 @@ def db_session():
     # document_ingestion entirely rather than hitting a real knowledge_chunks table.
     sqlite_tables = [t for t in Base.metadata.sorted_tables if t.name != "knowledge_chunks"]
     Base.metadata.create_all(bind=engine, tables=sqlite_tables)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    try:
+        yield engine
+    finally:
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
+
+
+@pytest.fixture()
+def db_session(test_engine):
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     session = TestingSessionLocal()
 
     # Real category taxonomy, same source scripts/seed_categories.py loads into
@@ -60,13 +75,38 @@ def db_session():
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
-        engine.dispose()
+
+
+@pytest.fixture()
+def run_background_inline(test_engine):
+    """Makes core.background.EXECUTOR.submit(fn, *a, **kw) run `fn` immediately and
+    synchronously, in-process, instead of on a real thread — and redirects any
+    SessionLocal() the background function opens to the same in-memory test engine.
+    Deterministic tests, no sleeps/polling, while still exercising the real
+    background-processing function end to end.
+    """
+    TestSessionLocal = sessionmaker(bind=test_engine)
+
+    def fake_submit(fn, *args, **kwargs):
+        with patch("api.routes.statements.SessionLocal", TestSessionLocal):
+            fn(*args, **kwargs)
+        return None
+
+    with patch("api.routes.statements.EXECUTOR") as mock_executor:
+        mock_executor.submit.side_effect = fake_submit
+        yield mock_executor
 
 
 @pytest.fixture()
 def client(db_session):
     def _override_get_db():
+        # In real production, get_db() opens a brand-new session per request, so it
+        # always sees committed changes from any other session (e.g. a background
+        # thread). Reusing one session across a test's simulated "requests" is
+        # convenient but doesn't expire on its own between them, so a background
+        # commit's fresh values would otherwise be masked by stale identity-mapped
+        # objects — expire_all() here restores that real per-request freshness.
+        db_session.expire_all()
         try:
             yield db_session
         finally:

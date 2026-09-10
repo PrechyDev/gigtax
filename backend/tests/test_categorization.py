@@ -32,3 +32,14 @@ def test_categorize_transactions(mock_generate_structured_output):
     assert result[0].description == "Uber Trip"
     assert result[0].category_slug == "exp_software_subscriptions"
     assert result[0].amount == -15.00
+
+
+@patch('modules.ai_categorization.categorization.llm_service.generate_structured_output')
+def test_categorize_transactions_propagates_llm_failures(mock_generate_structured_output):
+    # Regression test: this used to be swallowed and return [] — indistinguishable
+    # from a genuinely empty statement. It must propagate so the caller can mark the
+    # statement FAILED instead of silently "succeeding" with 0 transactions.
+    mock_generate_structured_output.side_effect = RuntimeError("litellm.ServiceUnavailableError: 503 high demand")
+
+    with pytest.raises(RuntimeError):
+        categorize_transactions("some text", "no rules", "Travel, Meals")

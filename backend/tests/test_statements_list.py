@@ -21,7 +21,7 @@ def test_list_statements_empty_for_new_user(client):
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_list_statements_reflects_uploaded_files(mock_process, client):
+def test_list_statements_reflects_uploaded_files_and_transaction_count(mock_process, client, run_background_inline):
     headers = _auth_header(client, "stmt-list-user2@example.com")
     mock_process.return_value = [
         ParsedTransaction(
@@ -42,28 +42,10 @@ def test_list_statements_reflects_uploaded_files(mock_process, client):
     assert items[0]["file_name"] == "statement.csv"
     assert items[0]["parsing_status"] == "COMPLETED"
     assert items[0]["source_type"] == "csv"
+    assert items[0]["transactions_created"] == 1
 
 
-@patch("api.routes.statements.process_bank_statement")
-def test_a_generic_llm_failure_marks_file_failed_with_friendly_message_not_a_500(mock_process, client):
-    headers = _auth_header(client, "stmt-list-user3@example.com")
-    mock_process.side_effect = RuntimeError("litellm.APIConnectionError: 429 rate limit exceeded, quota exhausted")
-
-    response = client.post(
-        "/statements",
-        files={"files": ("statement.csv", io.BytesIO(b"data"), "text/csv")},
-        headers=headers,
-    )
-
-    assert response.status_code == 201  # the batch endpoint itself still succeeds
-    result = response.json()["results"][0]
-    assert result["status"] == "FAILED"
-    assert "429" not in result["error"]
-    assert "rate limit" not in result["error"].lower()
-    assert "temporarily unavailable" in result["error"]
-
-
-def test_list_statements_scoped_to_owning_user(client):
+def test_list_statements_scoped_to_owning_user(client, run_background_inline):
     headers_a = _auth_header(client, "stmt-list-a@example.com")
     headers_b = _auth_header(client, "stmt-list-b@example.com")
 

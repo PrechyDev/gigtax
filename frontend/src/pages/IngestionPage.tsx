@@ -1,5 +1,6 @@
-import { useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { listCategories } from '../api/categories'
 import { createManualTransaction } from '../api/transactions'
 import { listStatements, retryLockedStatement, uploadStatements } from '../api/statements'
@@ -14,31 +15,74 @@ import { SelectField, TextField } from '../components/ui/FormField'
 import { ApiError } from '../lib/apiClient'
 import { formatDateTime } from '../lib/formatters'
 
+const IN_FLIGHT_STATUSES = new Set(['PENDING', 'PROCESSING'])
+
+interface Toast {
+  id: string
+  message: string
+  tone: 'success' | 'error'
+}
+
 export function IngestionPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [unlockTarget, setUnlockTarget] = useState<{ statementId: string; fileName: string } | null>(null)
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const previousStatusesRef = useRef<Map<string, string>>(new Map())
 
-  const statementsQuery = useQuery({ queryKey: ['statements'], queryFn: listStatements })
+  const statementsQuery = useQuery({
+    queryKey: ['statements'],
+    queryFn: listStatements,
+    // Processing now happens in the background (see backend core/background.py) —
+    // poll while anything is still PENDING/PROCESSING so the queue below and the
+    // completion toasts update on their own, no manual refresh needed.
+    refetchInterval: (query) => (query.state.data?.some((s) => IN_FLIGHT_STATUSES.has(s.parsing_status)) ? 3000 : false),
+  })
+
+  // Detects a file finishing (PROCESSING -> COMPLETED/FAILED/LOCKED) between polls
+  // and surfaces a dismissible notification for it, independent of any other file
+  // still uploading/processing at the same time.
+  useEffect(() => {
+    if (!statementsQuery.data) return
+    const previous = previousStatusesRef.current
+    const newToasts: Toast[] = []
+
+    for (const statement of statementsQuery.data) {
+      const prevStatus = previous.get(statement.statement_id)
+      if (prevStatus && IN_FLIGHT_STATUSES.has(prevStatus) && statement.parsing_status !== prevStatus) {
+        if (statement.parsing_status === 'COMPLETED') {
+          newToasts.push({
+            id: `${statement.statement_id}-${Date.now()}`,
+            tone: 'success',
+            message: `"${statement.file_name}": ${statement.transactions_created} transaction(s) added.`,
+          })
+        } else if (statement.parsing_status === 'FAILED') {
+          newToasts.push({
+            id: `${statement.statement_id}-${Date.now()}`,
+            tone: 'error',
+            message: `"${statement.file_name}" failed to process. You can try uploading it again.`,
+          })
+        } else if (statement.parsing_status === 'LOCKED') {
+          newToasts.push({
+            id: `${statement.statement_id}-${Date.now()}`,
+            tone: 'error',
+            message: `"${statement.file_name}" is password-protected — unlock it below.`,
+          })
+        }
+      }
+    }
+
+    if (newToasts.length > 0) setToasts((prev) => [...prev, ...newToasts])
+    previousStatusesRef.current = new Map(statementsQuery.data.map((s) => [s.statement_id, s.parsing_status]))
+  }, [statementsQuery.data])
 
   const uploadMutation = useMutation({
     mutationFn: uploadStatements,
-    onSuccess: (data) => {
-      const failed = data.results.filter((r) => r.status === 'FAILED')
-      const locked = data.results.filter((r) => r.status === 'LOCKED')
-      if (failed.length === 0 && locked.length === 0) {
-        setUploadSuccess(`${data.results.length} file(s) uploaded and processed successfully.`)
-      } else if (locked.length > 0) {
-        setUploadError(`${locked.length} file(s) need a password — see the list below to unlock them.`)
-      } else {
-        setUploadError(`${failed.length} file(s) failed to process. See the list below for details.`)
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['statements'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
     },
     onError: (err) => setUploadError(err instanceof ApiError ? err.message : 'Upload failed. Please try again.'),
   })
@@ -46,7 +90,6 @@ export function IngestionPage() {
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return
     setUploadError(null)
-    setUploadSuccess(null)
     uploadMutation.mutate(Array.from(files))
   }
 
@@ -54,6 +97,10 @@ export function IngestionPage() {
     e.preventDefault()
     setIsDragActive(false)
     handleFiles(e.dataTransfer.files)
+  }
+
+  function dismissToast(id: string) {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
   }
 
   return (
@@ -65,9 +112,23 @@ export function IngestionPage() {
           <ErrorBanner message={uploadError} onDismiss={() => setUploadError(null)} />
         </div>
       )}
-      {uploadSuccess && (
-        <div className="mb-4">
-          <SuccessBanner message={uploadSuccess} onDismiss={() => setUploadSuccess(null)} />
+
+      {toasts.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {toasts.map((toast) =>
+            toast.tone === 'success' ? (
+              <div key={toast.id} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <SuccessBanner message={toast.message} onDismiss={() => dismissToast(toast.id)} />
+                </div>
+                <Link to="/ledger" className="shrink-0 text-sm font-semibold text-blue hover:underline">
+                  Review now
+                </Link>
+              </div>
+            ) : (
+              <ErrorBanner key={toast.id} message={toast.message} onDismiss={() => dismissToast(toast.id)} />
+            ),
+          )}
         </div>
       )}
 
@@ -125,7 +186,11 @@ export function IngestionPage() {
                   <li key={statement.statement_id} className="flex items-center justify-between py-3">
                     <div>
                       <p className="text-sm font-medium text-on-surface">{statement.file_name}</p>
-                      <p className="text-xs text-on-surface-variant">{formatDateTime(statement.upload_date)}</p>
+                      <p className="text-xs text-on-surface-variant">
+                        {formatDateTime(statement.upload_date)}
+                        {statement.parsing_status === 'COMPLETED' &&
+                          ` · ${statement.transactions_created} transaction(s)`}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       {statement.parsing_status === 'PROCESSING' && <Spinner size={16} />}

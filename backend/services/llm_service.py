@@ -16,12 +16,33 @@ logger = logging.getLogger(__name__)
 EMBEDDING_MODEL = "gemini/gemini-embedding-001"
 EMBEDDING_DIMENSIONS = 3072
 
+# Every LLM call gets this ceiling so a hung request fails fast (and can be retried/
+# failed-over) instead of tying up a worker thread indefinitely.
+REQUEST_TIMEOUT_SECONDS = 30
+
+# Substrings that mean "transient, worth retrying/failing over" — deliberately broad.
+# Found in production: a plain 429 is the easy case, but Gemini also fails with
+# `503 UNAVAILABLE "high demand"` and bare connection drops
+# (`RemoteProtocolError: Server disconnected without sending a response`) that don't
+# mention 429/quota anywhere — those used to fall straight through with zero retries.
+TRANSIENT_ERROR_SUBSTRINGS = (
+    "429", "rate limit", "resourceexhausted", "quota",
+    "503", "unavailable", "overloaded", "high demand",
+    "server disconnected", "timeout", "timed out", "connection",
+)
+
+
+def _is_transient_error(error: Exception) -> bool:
+    error_msg = str(error).lower()
+    return any(s in error_msg for s in TRANSIENT_ERROR_SUBSTRINGS)
+
+
 class LLMService:
     """
     Centralized service for all LLM interactions (Text, Vision, Structured Output, RAG).
     Handles standard settings, error logging, and client wrapping.
     """
-    
+
     def __init__(self):
         # We can add global settings for litellm here (retries, timeouts, fallbacks)
         self.default_text_model = settings.CATEGORIZATION_MODEL
@@ -32,25 +53,27 @@ class LLMService:
 
     def _execute_with_fallbacks(self, func, primary_model, *args, **kwargs):
         """
-        Executes an LLM function, catching rate limits and looping through fallbacks.
+        Executes an LLM function, catching transient failures and looping through
+        fallback models — a rate limit is the obvious case, but Gemini overload
+        (503) and bare connection drops are just as real and must trigger the same
+        cascade (see TRANSIENT_ERROR_SUBSTRINGS).
         """
+        kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
         try:
             return func(model=primary_model, *args, **kwargs)
         except Exception as e:
-            error_msg = str(e).lower()
-            if "429" in error_msg or "rate limit" in error_msg or "resourceexhausted" in error_msg or "quota" in error_msg:
+            if _is_transient_error(e):
                 fallbacks = ["gemini/gemini-3.6-flash", "gemini/gemini-2.5-flash", "gemini/gemini-3.5-flash-lite"]
                 for fb in fallbacks:
-                    logger.warning(f"Rate limit hit on {primary_model}. Trying fallback {fb}.")
+                    logger.warning(f"Transient failure on {primary_model} ({e}). Trying fallback {fb}.")
                     try:
                         return func(model=fb, *args, **kwargs)
                     except Exception as fallback_e:
-                        fb_error_msg = str(fallback_e).lower()
-                        if "429" in fb_error_msg or "rate limit" in fb_error_msg or "resourceexhausted" in fb_error_msg:
+                        if _is_transient_error(fallback_e):
                             continue
                         logger.error(f"LLM generation failed on fallback {fb}: {fallback_e}")
                         raise fallback_e
-                logger.error("All fallback models exhausted due to rate limits.")
+                logger.error("All fallback models exhausted due to transient failures.")
                 raise e
             logger.error(f"LLM generation failed: {e}")
             raise e
@@ -84,7 +107,7 @@ class LLMService:
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-            
+
         messages.append({
             "role": "user",
             "content": [
@@ -138,19 +161,18 @@ class LLMService:
         """Embeds a single string (a query, or one knowledge-base chunk) for RAG
         retrieval. No fallback *model* here — there's only one Gemini embedding model
         available, unlike the chat/vision models above — but bulk document ingestion
-        makes many calls back-to-back, so a rate limit (429) gets retried with
-        exponential backoff rather than aborting the whole ingestion run.
+        makes many calls back-to-back, so a transient failure (rate limit, 503
+        overload, a bare dropped connection) gets retried with exponential backoff
+        rather than aborting the whole ingestion run or a single interactive query.
         """
         for attempt in range(max_retries):
             try:
-                response = embedding(model=EMBEDDING_MODEL, input=[text])
+                response = embedding(model=EMBEDDING_MODEL, input=[text], timeout=REQUEST_TIMEOUT_SECONDS)
                 return response.data[0]["embedding"]
             except Exception as e:
-                error_msg = str(e).lower()
-                is_rate_limit = any(s in error_msg for s in ("429", "rate limit", "resourceexhausted", "quota"))
-                if is_rate_limit and attempt < max_retries - 1:
+                if _is_transient_error(e) and attempt < max_retries - 1:
                     wait_seconds = 2 ** attempt * 5  # 5s, 10s, 20s, 40s, ...
-                    logger.warning(f"Embedding rate-limited, retrying in {wait_seconds}s (attempt {attempt + 1}/{max_retries}).")
+                    logger.warning(f"Embedding call failed transiently ({e}), retrying in {wait_seconds}s (attempt {attempt + 1}/{max_retries}).")
                     time.sleep(wait_seconds)
                     continue
                 logger.error(f"Embedding generation failed: {e}")

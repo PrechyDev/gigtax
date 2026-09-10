@@ -35,16 +35,15 @@ def categorize_transactions(sanitized_text: str, custom_rules: str, predefined_c
     10. Return the extracted transactions in the specified format.
     """
     
-    try:
-        response = llm_service.generate_structured_output(
-            prompt=prompt,
-            system_prompt="You are a precise financial data extraction API. Be highly deterministic and do not hallucinate.",
-            response_model=TransactionExtraction,
-            model=model_name
-        )
-        return response.transactions
-    except Exception as e:
-        import logging
-        logger = logging.getLogger("ai_categorization.llm_categorizer")
-        logger.error(f"Error during categorization LLM call: {e}")
-        return []
+    # Deliberately no try/except here: a failed LLM call must propagate, not come
+    # back as "0 transactions found" — that's indistinguishable from a genuinely
+    # empty statement. The caller (modules/ai_categorization/main.py's
+    # process_bank_statement, and ultimately api/routes/statements.py) is where this
+    # gets turned into a proper FAILED status with a friendly message.
+    response = llm_service.generate_structured_output(
+        prompt=prompt,
+        system_prompt="You are a precise financial data extraction API. Be highly deterministic and do not hallucinate.",
+        response_model=TransactionExtraction,
+        model=model_name
+    )
+    return response.transactions

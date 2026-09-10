@@ -30,7 +30,7 @@ def test_manual_asset_purchase_creates_linked_asset_not_a_full_expense_deduction
 
 
 @patch("api.routes.statements.process_bank_statement")
-def test_ai_categorized_asset_purchase_also_creates_linked_asset(mock_process, client):
+def test_ai_categorized_asset_purchase_also_creates_linked_asset(mock_process, client, run_background_inline):
     headers = _auth_header(client, "asset-user2@example.com")
     mock_process.return_value = [
         ParsedTransaction(
