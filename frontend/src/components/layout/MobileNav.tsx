@@ -3,8 +3,12 @@ import { NAV_ITEMS } from './navItems'
 
 // A compact subset for the small mobile bottom bar — the mockups used different,
 // inconsistent mobile nav sets per screen (or none at all); one set, used everywhere.
+// Settings was here before Ingestion — since the account menu (see AccountMenu.tsx)
+// now reaches Settings from every breakpoint, Ingestion belongs in the bottom bar
+// instead: it's where a statement actually gets uploaded, and previously had no path
+// to it at all on mobile.
 const MOBILE_ITEMS = NAV_ITEMS.filter((item) =>
-  ['/dashboard', '/ledger', '/reports', '/advisor', '/settings'].includes(item.to),
+  ['/dashboard', '/ingestion', '/ledger', '/reports', '/advisor'].includes(item.to),
 )
 
 export function MobileNav() {
