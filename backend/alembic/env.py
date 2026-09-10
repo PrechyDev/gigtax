@@ -74,6 +74,15 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             context.run_migrations()
 
+    # Keep the categories table in sync with db/seed_data/categories.json on every
+    # migration run (dev or deploy) — categories.json is otherwise only ever applied by
+    # hand, which is exactly how it drifted out of sync with the seed file after
+    # categories were retired from it. Upsert-only (see scripts/seed_categories.py), so
+    # this is safe to run unconditionally. Never invoked by the test suite, which builds
+    # its tables via SQLAlchemy metadata directly rather than through Alembic.
+    from scripts.seed_categories import seed_categories
+    seed_categories()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

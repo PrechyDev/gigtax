@@ -19,4 +19,9 @@ def list_categories(
     like every other endpoint — powers every category dropdown in the frontend
     (manual entry, ledger correction, custom rules).
     """
-    return db.query(Category).order_by(Category.classification, Category.category_name).all()
+    return (
+        db.query(Category)
+        .filter(Category.is_active.is_(True))
+        .order_by(Category.classification, Category.category_name)
+        .all()
+    )

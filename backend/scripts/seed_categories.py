@@ -32,6 +32,10 @@ def seed_categories() -> None:
                 existing.description = entry.get("description")
                 existing.tax_treatment = entry.get("tax_treatment")
                 existing.asset_class = entry.get("asset_class")
+                # Anything still listed in the JSON is active, even if it had been
+                # deactivated before — being re-added is exactly how a category comes
+                # back into selection.
+                existing.is_active = True
                 updated += 1
             else:
                 db.add(Category(
@@ -41,6 +45,7 @@ def seed_categories() -> None:
                     description=entry.get("description"),
                     tax_treatment=entry.get("tax_treatment"),
                     asset_class=entry.get("asset_class"),
+                    is_active=True,
                 ))
                 created += 1
         db.commit()

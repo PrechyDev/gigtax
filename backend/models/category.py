@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String
+from sqlalchemy import Boolean, Column, String
 from sqlalchemy.dialects.postgresql import UUID
 from db.base_class import Base
 
@@ -16,3 +16,9 @@ class Category(Base):
     # allowance class (and therefore annual write-down rate) this category maps to.
     # See modules/tax_computation/capital_allowances.py for the class -> rate table.
     asset_class = Column(String(20), nullable=True)
+    # False for a category retired from db/seed_data/categories.json (e.g. PAYE income,
+    # the old standalone rent-relief category) — the row stays so any transaction that
+    # already references it keeps working, but GET /categories stops offering it for new
+    # selection. scripts/seed_categories.py always sets this True for anything still
+    # present in the JSON; it's never flipped back on automatically otherwise.
+    is_active = Column(Boolean, default=True, nullable=False, server_default="true")
