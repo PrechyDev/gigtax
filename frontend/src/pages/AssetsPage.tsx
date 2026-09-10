@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { disposeAsset, listAssets } from '../api/assets'
@@ -6,8 +6,10 @@ import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner } from '../components/ui/Banner'
 import { EmptyState } from '../components/ui/EmptyState'
-import { PageSpinner, Spinner } from '../components/ui/Spinner'
+import { Modal } from '../components/ui/Modal'
+import { PageSpinner } from '../components/ui/Spinner'
 import { StatusPill, assetStatusTone } from '../components/ui/StatusPill'
+import { TextField } from '../components/ui/FormField'
 import { ApiError } from '../lib/apiClient'
 import { formatDate, formatNaira } from '../lib/formatters'
 
@@ -19,20 +21,10 @@ const ASSET_CLASS_LABELS: Record<string, string> = {
 
 export function AssetsPage() {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const currentYear = new Date().getFullYear()
 
   const assetsQuery = useQuery({ queryKey: ['assets', currentYear], queryFn: () => listAssets(currentYear) })
-
-  const disposeMutation = useMutation({
-    mutationFn: ({ id, date }: { id: string; date: string }) => disposeAsset(id, date),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not update this asset.'),
-  })
+  const [disposeTarget, setDisposeTarget] = useState<{ id: string; description: string } | null>(null)
 
   const totalValue = assetsQuery.data?.reduce((sum, a) => sum + a.cost, 0) ?? 0
   const totalCurrentYearDeduction = assetsQuery.data?.reduce((sum, a) => sum + a.current_year_allowance, 0) ?? 0
@@ -43,12 +35,6 @@ export function AssetsPage() {
         <p className="text-on-surface-variant">Track hardware depreciation and capital allowances for {currentYear}.</p>
         <Button onClick={() => navigate('/ingestion')}>New Asset</Button>
       </div>
-
-      {error && (
-        <div className="mb-4">
-          <ErrorBanner message={error} onDismiss={() => setError(null)} />
-        </div>
-      )}
 
       {assetsQuery.isLoading && <PageSpinner />}
       {assetsQuery.isError && (
@@ -117,14 +103,10 @@ export function AssetsPage() {
                         <td className="px-4 py-3">
                           {!asset.disposed && (
                             <button
-                              className="text-sm text-error hover:underline disabled:opacity-50"
-                              disabled={disposeMutation.isPending}
-                              onClick={() => {
-                                const date = window.prompt('Disposal date (YYYY-MM-DD)?', new Date().toISOString().slice(0, 10))
-                                if (date) disposeMutation.mutate({ id: asset.asset_id, date: new Date(date).toISOString() })
-                              }}
+                              className="text-sm text-error hover:underline"
+                              onClick={() => setDisposeTarget({ id: asset.asset_id, description: asset.description })}
                             >
-                              {disposeMutation.isPending ? <Spinner size={14} /> : 'Dispose'}
+                              Dispose
                             </button>
                           )}
                         </td>
@@ -137,6 +119,59 @@ export function AssetsPage() {
           )}
         </>
       )}
+
+      {disposeTarget && (
+        <DisposeAssetModal target={disposeTarget} onClose={() => setDisposeTarget(null)} />
+      )}
     </AppShell>
+  )
+}
+
+function DisposeAssetModal({
+  target,
+  onClose,
+}: {
+  target: { id: string; description: string }
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [error, setError] = useState<string | null>(null)
+
+  const disposeMutation = useMutation({
+    mutationFn: () => disposeAsset(target.id, new Date(date).toISOString()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      onClose()
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not update this asset.'),
+  })
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    disposeMutation.mutate()
+  }
+
+  return (
+    <Modal title={`Dispose "${target.description}"`} onClose={onClose}>
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} />
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <TextField label="Disposal Date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={disposeMutation.isPending}>
+            Confirm Disposal
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

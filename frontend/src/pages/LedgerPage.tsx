@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listCategories, type Category } from '../api/categories'
 import { groupCategoriesForType } from '../lib/categoryLabels'
@@ -14,8 +14,11 @@ import { listReceipts, uploadReceipt } from '../api/receipts'
 import { createCustomRule } from '../api/customRules'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
+import { Button } from '../components/ui/Button'
 import { ErrorBanner, SuccessBanner } from '../components/ui/Banner'
 import { EmptyState } from '../components/ui/EmptyState'
+import { TextField } from '../components/ui/FormField'
+import { Modal } from '../components/ui/Modal'
 import { PageSpinner, Spinner } from '../components/ui/Spinner'
 import { StatusPill, reviewStatusTone } from '../components/ui/StatusPill'
 import { ApiError } from '../lib/apiClient'
@@ -66,12 +69,6 @@ export function LedgerPage() {
       queryClient.invalidateQueries({ queryKey: ['assets'] })
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not update this transaction.'),
-  })
-
-  const createRuleMutation = useMutation({
-    mutationFn: createCustomRule,
-    onSuccess: () => setSuccess('Rule created — future matching transactions will use it automatically.'),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not create the rule.'),
   })
 
   const bulkApproveMutation = useMutation({
@@ -242,9 +239,7 @@ export function LedgerPage() {
                   isSelected={selectedIds.has(transaction.transaction_id)}
                   onToggleSelect={() => toggleOne(transaction.transaction_id)}
                   onReview={(input) => reviewMutation.mutate({ id: transaction.transaction_id, ...input })}
-                  onCreateRule={(pattern, categorySlug) =>
-                    createRuleMutation.mutate({ keyword_pattern: pattern, assigned_category: categorySlug })
-                  }
+                  onRuleCreated={() => setSuccess('Rule created — future matching transactions will use it automatically.')}
                   onDelete={() => handleDeleteOne(transaction)}
                   isSaving={reviewMutation.isPending}
                   isDeleting={deleteOneMutation.isPending}
@@ -278,7 +273,7 @@ function TransactionRow({
   isSelected,
   onToggleSelect,
   onReview,
-  onCreateRule,
+  onRuleCreated,
   onDelete,
   isSaving,
   isDeleting,
@@ -290,7 +285,7 @@ function TransactionRow({
   isSelected: boolean
   onToggleSelect: () => void
   onReview: (input: TransactionReviewInput) => void
-  onCreateRule: (pattern: string, categorySlug: string) => void
+  onRuleCreated: () => void
   onDelete: () => void
   isSaving: boolean
   isDeleting: boolean
@@ -298,6 +293,9 @@ function TransactionRow({
   const [receiptsOpen, setReceiptsOpen] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState(transaction.description)
+  const [ruleTarget, setRuleTarget] = useState<{ categorySlug: string; categoryName: string; defaultKeyword: string } | null>(
+    null,
+  )
   const isLowConfidence =
     transaction.confidence_score !== null && transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
 
@@ -410,13 +408,13 @@ function TransactionRow({
           {category && (
             <button
               className="mt-1 text-xs text-blue hover:underline"
-              onClick={() => {
-                const keyword = window.prompt(
-                  `Always categorize transactions matching which keyword as "${category.category_name}"?`,
-                  transaction.description.split(' ')[0],
-                )
-                if (keyword) onCreateRule(keyword, category.developer_slug)
-              }}
+              onClick={() =>
+                setRuleTarget({
+                  categorySlug: category.developer_slug,
+                  categoryName: category.category_name,
+                  defaultKeyword: transaction.description.split(' ')[0],
+                })
+              }
             >
               + Create a rule from this
             </button>
@@ -450,7 +448,72 @@ function TransactionRow({
           </td>
         </tr>
       )}
+      {ruleTarget && (
+        <CreateRuleModal
+          target={ruleTarget}
+          onClose={() => setRuleTarget(null)}
+          onCreated={onRuleCreated}
+        />
+      )}
     </>
+  )
+}
+
+function CreateRuleModal({
+  target,
+  onClose,
+  onCreated,
+}: {
+  target: { categorySlug: string; categoryName: string; defaultKeyword: string }
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [keyword, setKeyword] = useState(target.defaultKeyword)
+  const [error, setError] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: () => createCustomRule({ keyword_pattern: keyword, assigned_category: target.categorySlug }),
+    onSuccess: () => {
+      onCreated()
+      onClose()
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not create the rule.'),
+  })
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (keyword.trim()) mutation.mutate()
+  }
+
+  return (
+    <Modal title="Create a Rule" onClose={onClose}>
+      <p className="mb-4 text-sm text-on-surface-variant">
+        Transactions matching this keyword will always be categorized as "{target.categoryName}".
+      </p>
+      {error && (
+        <div className="mb-4">
+          <ErrorBanner message={error} />
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <TextField
+          label="Keyword"
+          required
+          autoFocus
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending}>
+            Create Rule
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
