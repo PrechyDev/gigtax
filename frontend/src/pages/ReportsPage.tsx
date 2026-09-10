@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
+import { getFilingGuidance } from '../api/filingGuidance'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
@@ -22,6 +23,11 @@ export function ReportsPage() {
     queryKey: ['tax-computation', taxYear],
     queryFn: () => getTaxComputation(taxYear),
     retry: false,
+  })
+
+  const filingGuidanceQuery = useQuery({
+    queryKey: ['filing-guidance', user?.state_residence],
+    queryFn: () => getFilingGuidance(user?.state_residence ?? undefined),
   })
 
   const computeMutation = useMutation({
@@ -151,6 +157,8 @@ export function ReportsPage() {
             </div>
           )}
 
+          <FilingGuidancePanel guidance={filingGuidanceQuery.data} isLoading={filingGuidanceQuery.isLoading} />
+
           {computationQuery.data.last_updated && (
             <p className="text-xs text-on-surface-variant">
               Last computed: {formatDateTime(computationQuery.data.last_updated)}
@@ -159,6 +167,30 @@ export function ReportsPage() {
         </div>
       )}
     </AppShell>
+  )
+}
+
+function FilingGuidancePanel({
+  guidance,
+  isLoading,
+}: {
+  guidance?: { state: string | null; portal_name: string | null; portal_url: string | null; note: string }
+  isLoading: boolean
+}) {
+  if (isLoading) return null
+  if (!guidance) return null
+
+  return (
+    <div className="rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="material-symbols-outlined text-blue">gavel</span>
+        <h3 className="font-semibold text-navy">Filing Guidance{guidance.state ? ` — ${guidance.state}` : ''}</h3>
+      </div>
+      {guidance.portal_name && (
+        <p className="mb-1 text-sm font-medium text-on-surface">{guidance.portal_name}</p>
+      )}
+      <p className="text-sm text-on-surface-variant">{guidance.note}</p>
+    </div>
   )
 }
 

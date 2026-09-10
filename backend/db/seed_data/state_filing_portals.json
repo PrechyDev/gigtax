@@ -1,0 +1,23 @@
+{
+  "_comment": "Plain, hand-editable lookup for GET /filing-guidance — no migration needed to add or correct an entry. portal_url is deliberately left null everywhere: government portal URLs change without notice and an out-of-date or wrong link is worse than no link, so the app only ever names a portal, never guesses its address. 'default' is returned for any state not listed below.",
+  "default": {
+    "portal_name": null,
+    "portal_url": null,
+    "note": "Filing deadlines and procedures are set by your State Internal Revenue Service (a separate body from the federal Nigeria Tax Act this app implements) — search for your state's official tax portal to file and confirm this year's deadline."
+  },
+  "Lagos": {
+    "portal_name": "LIRS eTax",
+    "portal_url": null,
+    "note": "Lagos State Internal Revenue Service's online filing portal. Search \"LIRS eTax\" to find the current official link."
+  },
+  "FCT (Abuja)": {
+    "portal_name": "FCT-IRS Taxportal",
+    "portal_url": null,
+    "note": "The FCT Internal Revenue Service's online filing portal. Search \"FCT-IRS Taxportal\" to find the current official link."
+  },
+  "Rivers": {
+    "portal_name": "RIVTAMIS",
+    "portal_url": null,
+    "note": "Rivers State's online tax administration portal. Search \"RIVTAMIS\" to find the current official link."
+  }
+}

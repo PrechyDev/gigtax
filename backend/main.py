@@ -11,6 +11,7 @@ from api.routes import (
     categories,
     custom_rules,
     dashboard,
+    filing_guidance,
     google_drive,
     receipts,
     reports,
@@ -64,6 +65,7 @@ app.include_router(dashboard.router)
 app.include_router(advisory.router)
 app.include_router(assets.router)
 app.include_router(categories.router)
+app.include_router(filing_guidance.router)
 
 @app.get("/")
 def read_root():
