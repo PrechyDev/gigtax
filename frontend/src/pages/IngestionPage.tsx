@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { listCategories } from '../api/categories'
@@ -27,6 +27,7 @@ interface Toast {
 export function IngestionPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const retryInputRef = useRef<HTMLInputElement>(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showManualEntry, setShowManualEntry] = useState(false)
@@ -64,7 +65,9 @@ export function IngestionPage() {
           newToasts.push({
             id: `${statement.statement_id}-${Date.now()}`,
             tone: 'error',
-            message: `"${statement.file_name}" failed to process. You can try uploading it again.`,
+            message: statement.error_message
+              ? `"${statement.file_name}": ${statement.error_message}`
+              : `"${statement.file_name}" failed to process. You can try uploading it again.`,
           })
         } else if (statement.parsing_status === 'LOCKED') {
           newToasts.push({
@@ -102,6 +105,11 @@ export function IngestionPage() {
 
   function dismissToast(id: string) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  function handleRetryFileChosen(e: ChangeEvent<HTMLInputElement>) {
+    handleFiles(e.target.files)
+    e.target.value = '' // allow re-selecting the exact same file next time
   }
 
   return (
@@ -171,6 +179,13 @@ export function IngestionPage() {
 
           <div className="mt-6 rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
             <h3 className="mb-4 font-semibold text-navy">Recent Uploads</h3>
+            <input
+              ref={retryInputRef}
+              type="file"
+              accept=".pdf,.csv,.xls,.xlsx,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={handleRetryFileChosen}
+            />
             {statementsQuery.isLoading && <PageSpinner />}
             {statementsQuery.isError && (
               <ErrorBanner
@@ -192,6 +207,9 @@ export function IngestionPage() {
                         {statement.parsing_status === 'COMPLETED' &&
                           ` · ${statement.transactions_created} transaction(s)`}
                       </p>
+                      {statement.parsing_status === 'FAILED' && statement.error_message && (
+                        <p className="mt-0.5 text-xs text-error">{statement.error_message}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {statement.parsing_status === 'PROCESSING' && <Spinner size={16} />}
@@ -204,6 +222,11 @@ export function IngestionPage() {
                           }
                         >
                           Unlock
+                        </Button>
+                      )}
+                      {statement.parsing_status === 'FAILED' && (
+                        <Button variant="secondary" onClick={() => retryInputRef.current?.click()}>
+                          Retry
                         </Button>
                       )}
                     </div>

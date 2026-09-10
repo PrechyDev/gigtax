@@ -16,6 +16,7 @@ export interface StatementListItem {
   parsing_status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'LOCKED'
   upload_date: string
   transactions_created: number
+  error_message: string | null
 }
 
 export function uploadStatements(files: File[]) {

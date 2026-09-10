@@ -91,6 +91,7 @@ def test_upload_parsing_error_marks_file_failed_not_whole_batch(mock_process, cl
 
     statement = _statement_by_name(client, headers, "bad.csv")
     assert statement["parsing_status"] == "FAILED"
+    assert statement["error_message"] == "corrupt file"
 
 
 @patch("api.routes.statements.process_bank_statement")
@@ -102,6 +103,8 @@ def test_upload_generic_llm_failure_marks_failed_with_friendly_message(mock_proc
 
     statement = _statement_by_name(client, headers, "overloaded.csv")
     assert statement["parsing_status"] == "FAILED"
+    # Never leak the raw provider error — same friendly message shown to the user.
+    assert statement["error_message"] == "Our document processing service is temporarily unavailable. Please try again in a few minutes."
 
 
 @patch("api.routes.statements.process_bank_statement")

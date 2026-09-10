@@ -24,5 +24,6 @@ class StatementListItem(BaseModel):
     parsing_status: str
     upload_date: datetime
     transactions_created: int = 0
+    error_message: str | None = None
 
     model_config = {"from_attributes": True}

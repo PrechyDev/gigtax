@@ -75,6 +75,7 @@ def _process_one_file(
             persist_parsed_transaction(db, parsed, current_user, statement.statement_id)
 
         statement.parsing_status = ParsingStatus.COMPLETED
+        statement.error_message = None
         db.commit()
         return StatementFileResult(
             statement_id=statement.statement_id,
@@ -84,6 +85,7 @@ def _process_one_file(
         )
     except PasswordRequiredError:
         statement.parsing_status = ParsingStatus.LOCKED
+        statement.error_message = None
         db.commit()
         if raise_on_password_required:
             raise
@@ -95,6 +97,7 @@ def _process_one_file(
         )
     except ParsingError as e:
         statement.parsing_status = ParsingStatus.FAILED
+        statement.error_message = str(e)
         db.commit()
         return StatementFileResult(
             statement_id=statement.statement_id,
@@ -109,6 +112,7 @@ def _process_one_file(
         # through and can retry, not why in provider terms.
         logger.exception(f"Unexpected failure processing statement file '{filename}'")
         statement.parsing_status = ParsingStatus.FAILED
+        statement.error_message = AI_SERVICE_UNAVAILABLE_MESSAGE
         db.commit()
         return StatementFileResult(
             statement_id=statement.statement_id,
@@ -214,6 +218,7 @@ def list_statements(
             parsing_status=s.parsing_status,
             upload_date=s.upload_date,
             transactions_created=counts.get(s.statement_id, 0),
+            error_message=s.error_message,
         )
         for s in statements
     ]

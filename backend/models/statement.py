@@ -22,6 +22,11 @@ class StatementUpload(Base):
     upload_date = Column(DateTime(timezone=True), nullable=False)
     parsing_status = Column(Enum(ParsingStatus), default=ParsingStatus.PENDING)
     source_type = Column(String(20))  # "pdf" | "csv" | "excel" | "image"
+    # Set alongside parsing_status whenever it becomes FAILED — the same user-safe
+    # string already returned in StatementFileResult.error, just persisted so it
+    # survives past the initial synchronous response (background failures were
+    # otherwise only ever logged server-side and lost).
+    error_message = Column(String(500), nullable=True)
     # Nullable: raw statement bytes are processed in memory and never persisted
     # (see .agents/AGENTS.md privacy rule), so most uploads have no storage_path at all.
     storage_path = Column(String(500), nullable=True)
