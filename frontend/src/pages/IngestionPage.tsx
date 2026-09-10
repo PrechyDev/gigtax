@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'rea
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { listCategories } from '../api/categories'
+import { groupCategoriesForType } from '../lib/categoryLabels'
 import { createManualTransaction } from '../api/transactions'
 import { listStatements, retryLockedStatement, uploadStatements } from '../api/statements'
 import { AppShell } from '../components/layout/AppShell'
@@ -281,7 +282,9 @@ function ManualEntryModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         <SelectField
           label="Type"
           value={form.transaction_type}
-          onChange={(e) => setForm({ ...form, transaction_type: e.target.value as 'income' | 'expense' })}
+          onChange={(e) =>
+            setForm({ ...form, transaction_type: e.target.value as 'income' | 'expense', category_slug: '' })
+          }
         >
           <option value="expense">Expense</option>
           <option value="income">Income</option>
@@ -315,13 +318,15 @@ function ManualEntryModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
           onChange={(e) => setForm({ ...form, category_slug: e.target.value })}
         >
           <option value="">Select a category...</option>
-          {categoriesQuery.data
-            ?.filter((c) => c.classification !== 'Unknown')
-            .map((c) => (
-              <option key={c.developer_slug} value={c.developer_slug}>
-                {c.category_name}
-              </option>
-            ))}
+          {groupCategoriesForType(categoriesQuery.data ?? [], form.transaction_type).map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.categories.map((c) => (
+                <option key={c.developer_slug} value={c.developer_slug}>
+                  {c.category_name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </SelectField>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

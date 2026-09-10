@@ -1,14 +1,7 @@
 [
   {
     "classification": "Income",
-    "category_name": "Taxed Employment Income",
-    "developer_slug": "taxed_salary_paye",
-    "description": "Net salary received where the employer has already calculated and remitted PAYE tax. Exclude from progressive tax calculation. Used purely to calculate your Total Income bracket and check if PAYE was deducted accurately.",
-    "tax_treatment": "excluded_from_progressive_tax"
-  },
-  {
-    "classification": "Income",
-    "category_name": "Untaxed Contract Income",
+    "category_name": "Retainer / Contract Income",
     "developer_slug": "untaxed_contract_salary",
     "description": "Gross salary or fixed retainer paid by an employer who does not deduct monthly PAYE tax.",
     "tax_treatment": "subject_to_progressive_tax"
@@ -132,6 +125,20 @@
     "category_name": "Uncategorized",
     "developer_slug": "uncategorized",
     "description": "Fallback category for transactions that cannot be identified.",
+    "tax_treatment": "unclassified"
+  },
+  {
+    "classification": "Unknown",
+    "category_name": "Other Income",
+    "developer_slug": "other_income",
+    "description": "Income that doesn't fit any listed category. Not included in the tax calculation — recorded for your own records only.",
+    "tax_treatment": "unclassified"
+  },
+  {
+    "classification": "Unknown",
+    "category_name": "Other Expense",
+    "developer_slug": "other_expense",
+    "description": "An expense that doesn't fit any listed category. Not included in the tax calculation — recorded for your own records only.",
     "tax_treatment": "unclassified"
   }
 ]

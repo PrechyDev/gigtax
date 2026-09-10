@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { listCategories } from '../api/categories'
+import { listCategories, type Category } from '../api/categories'
+import { groupCategoriesForType } from '../lib/categoryLabels'
 import { listTransactions, reviewTransaction, type Transaction, type TransactionReviewInput } from '../api/transactions'
 import { listReceipts, uploadReceipt } from '../api/receipts'
 import { createCustomRule } from '../api/customRules'
@@ -130,7 +131,7 @@ function TransactionRow({
 }: {
   transaction: Transaction
   category?: { developer_slug: string; category_name: string }
-  categories: { developer_slug: string; category_name: string; classification: string }[]
+  categories: Category[]
   homeOfficeEnabled: boolean
   onReview: (input: TransactionReviewInput) => void
   onCreateRule: (pattern: string, categorySlug: string) => void
@@ -164,13 +165,15 @@ function TransactionRow({
             <option value="" disabled>
               Select a category...
             </option>
-            {categories
-              .filter((c) => c.classification !== 'Unknown')
-              .map((c) => (
-                <option key={c.developer_slug} value={c.developer_slug}>
-                  {c.category_name}
-                </option>
-              ))}
+            {groupCategoriesForType(categories, transaction.type).map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.categories.map((c) => (
+                  <option key={c.developer_slug} value={c.developer_slug}>
+                    {c.category_name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
           {isLowConfidence && <p className="mt-1 text-xs text-error">AI confidence low — please verify</p>}
         </td>
