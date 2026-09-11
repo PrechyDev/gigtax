@@ -6,14 +6,22 @@ feature specification and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the bui
 
 ## Local setup
 
-### Backend
+### Quick start (Windows)
+```
+.\start-dev.ps1   # starts Postgres, runs migrations, launches backend + frontend
+.\stop-dev.ps1    # stops all three (Postgres data is preserved)
+```
+Each service opens in its own PowerShell window with logs visible. First run installs
+backend/frontend dependencies automatically if they're missing; you still need to create
+`backend/.env` yourself first (see below) since that holds secrets the script can't generate.
+
+### Backend (manual steps, or if not on Windows)
 ```
 docker compose up -d db          # from the repo root, starts local Postgres
 cd backend
 poetry install
 cp .env.example .env             # fill in your own GEMINI_API_KEY (see below for the rest)
-poetry run alembic upgrade head  # creates all tables
-poetry run python -m scripts.seed_categories   # loads the NTA-2025-aligned category taxonomy
+poetry run alembic upgrade head  # creates all tables and seeds/re-syncs the category taxonomy
 poetry run uvicorn main:app --reload
 ```
 
@@ -34,4 +42,9 @@ No test in this suite makes a real Gemini API call — all LLM calls are mocked.
 check (`backend/test_pipeline.py <file_path>`) does make real calls and is opt-in only, never run in CI.
 
 ### Frontend
-Not yet scaffolded — see `docs/BUILD_PLAN.md` §4.
+```
+cd frontend
+npm install
+npm run dev -- --port 5173
+```
+App: http://localhost:5173
