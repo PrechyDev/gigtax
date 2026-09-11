@@ -55,6 +55,23 @@ def test_advisor_grounds_the_prompt_in_retrieved_chunks(mock_retrieve, mock_gene
     assert "p.42" in kwargs["system_prompt"]
 
 
+@patch("modules.advisory.rag_advisor.llm_service.generate_text")
+@patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
+def test_advisor_prompt_includes_the_apps_own_category_rules(mock_retrieve, mock_generate_text, client):
+    # Regression: the advisor used to only know the raw statute text, so a question the
+    # app's own taxonomy already answers (which capital-allowance class a laptop is)
+    # got deflected to "consult a professional" instead of a concrete answer.
+    mock_retrieve.return_value = [_fake_chunk(citation="p.99", content="Some statutory text about capital allowances.")]
+    mock_generate_text.return_value = "some answer"
+    headers = _auth_header(client, "advisor-user13@example.com")
+
+    client.post("/advisory/query", json={"question": "What class is a laptop?"}, headers=headers)
+
+    system_prompt = mock_generate_text.call_args.kwargs["system_prompt"]
+    assert "THIS APP'S OWN CATEGORY RULES" in system_prompt
+    assert "Computers, Cameras & Equipment is Class 2" in system_prompt
+
+
 @patch("modules.advisory.rag_advisor.retrieve_relevant_chunks")
 def test_advisor_handles_an_empty_knowledge_base_gracefully(mock_retrieve, client):
     mock_retrieve.return_value = []
