@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
 import { getFilingGuidance } from '../api/filingGuidance'
 import { useAuth } from '../context/AuthContext'
@@ -128,6 +129,17 @@ export function ReportsPage() {
               label="Statutory Reliefs"
               value={-computationQuery.data.total_reliefs}
               items={computationQuery.data.relief_items}
+              emptyHint={
+                !user?.annual_rent_paid ? (
+                  <>
+                    Paying rent?{' '}
+                    <Link to="/settings" className="text-blue hover:underline">
+                      Add it in Settings
+                    </Link>{' '}
+                    to claim rent relief automatically.
+                  </>
+                ) : undefined
+              }
             />
             <SummaryRow label="Taxable Income" value={computationQuery.data.taxable_income} bold />
             <SummaryRow label="Net Tax Payable" value={computationQuery.data.estimated_tax_owed} bold last highlight />
@@ -219,7 +231,17 @@ function SummaryRow({
   )
 }
 
-function BreakdownRow({ label, value, items }: { label: string; value: number; items: CategoryAmountItem[] }) {
+function BreakdownRow({
+  label,
+  value,
+  items,
+  emptyHint,
+}: {
+  label: string
+  value: number
+  items: CategoryAmountItem[]
+  emptyHint?: ReactNode
+}) {
   return (
     <details className="group border-b border-outline-variant">
       <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 [&::-webkit-details-marker]:hidden">
@@ -242,7 +264,7 @@ function BreakdownRow({ label, value, items }: { label: string; value: number; i
             ))}
           </ul>
         ) : (
-          <p className="text-sm italic text-on-surface-variant">Nothing in this category.</p>
+          <p className="text-sm italic text-on-surface-variant">{emptyHint ?? 'Nothing in this category.'}</p>
         )}
       </div>
     </details>
