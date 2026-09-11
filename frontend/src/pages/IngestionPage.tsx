@@ -30,7 +30,7 @@ function isTakingLonger(statement: { parsing_status: string; upload_date: string
 interface Toast {
   id: string
   message: string
-  tone: 'success' | 'error'
+  tone: 'success' | 'error' | 'neutral'
 }
 
 export function IngestionPage() {
@@ -76,11 +76,19 @@ export function IngestionPage() {
       const prevStatus = previous.get(statement.statement_id)
       if (prevStatus && IN_FLIGHT_STATUSES.has(prevStatus) && statement.parsing_status !== prevStatus) {
         if (statement.parsing_status === 'COMPLETED') {
-          newToasts.push({
-            id: `${statement.statement_id}-${Date.now()}`,
-            tone: 'success',
-            message: `"${statement.file_name}": ${statement.transactions_created} transaction(s) added.`,
-          })
+          newToasts.push(
+            statement.transactions_created > 0
+              ? {
+                  id: `${statement.statement_id}-${Date.now()}`,
+                  tone: 'success',
+                  message: `"${statement.file_name}": ${statement.transactions_created} transaction(s) added.`,
+                }
+              : {
+                  id: `${statement.statement_id}-${Date.now()}`,
+                  tone: 'neutral',
+                  message: `"${statement.file_name}" completed, but no transactions were found in it.`,
+                },
+          )
         } else if (statement.parsing_status === 'FAILED') {
           newToasts.push({
             id: `${statement.statement_id}-${Date.now()}`,
@@ -144,20 +152,39 @@ export function IngestionPage() {
 
       {toasts.length > 0 && (
         <div className="mb-4 space-y-2">
-          {toasts.map((toast) =>
-            toast.tone === 'success' ? (
-              <div key={toast.id} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <SuccessBanner message={toast.message} onDismiss={() => dismissToast(toast.id)} />
+          {toasts.map((toast) => {
+            if (toast.tone === 'success') {
+              return (
+                <div key={toast.id} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <SuccessBanner message={toast.message} onDismiss={() => dismissToast(toast.id)} />
+                  </div>
+                  <Link to="/ledger" className="shrink-0 text-sm font-semibold text-blue hover:underline">
+                    Review now
+                  </Link>
                 </div>
-                <Link to="/ledger" className="shrink-0 text-sm font-semibold text-blue hover:underline">
-                  Review now
-                </Link>
-              </div>
-            ) : (
-              <ErrorBanner key={toast.id} message={toast.message} onDismiss={() => dismissToast(toast.id)} />
-            ),
-          )}
+              )
+            }
+            if (toast.tone === 'neutral') {
+              return (
+                <div
+                  key={toast.id}
+                  className="flex items-start gap-3 rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface-variant"
+                >
+                  <span className="material-symbols-outlined mt-0.5 shrink-0">info</span>
+                  <p className="flex-1 text-sm">{toast.message}</p>
+                  <button
+                    onClick={() => dismissToast(toast.id)}
+                    aria-label="Dismiss"
+                    className="shrink-0 text-on-surface-variant/70"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+              )
+            }
+            return <ErrorBanner key={toast.id} message={toast.message} onDismiss={() => dismissToast(toast.id)} />
+          })}
         </div>
       )}
 

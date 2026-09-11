@@ -88,6 +88,9 @@ export function AdvisorPage() {
   }
 
   function startNewChat() {
+    if (messages.length > 0 && !window.confirm('Start a new chat? This clears your current conversation.')) {
+      return
+    }
     sessionStorage.removeItem(SESSION_STORAGE_KEY)
     setSessionId(null)
     setMessages([])
