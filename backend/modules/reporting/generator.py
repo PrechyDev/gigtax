@@ -16,7 +16,15 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from modules.tax_computation.engine import TaxComputationResult
 
 
-def build_report_pdf(user_name: str, tax_year: str, result: TaxComputationResult) -> bytes:
+def build_report_pdf(
+    user_name: str, tax_year: str, result: TaxComputationResult, items: dict | None = None
+) -> bytes:
+    """`items` is the same {income_items, deduction_items, capital_allowance_items,
+    relief_items} shape the web Reports page renders (see
+    modules/tax_computation/reporting_helpers.py) — optional so any existing caller
+    that doesn't have it yet still gets a valid PDF, just without the itemization.
+    """
+    items = items or {}
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
     styles = getSampleStyleSheet()
@@ -50,6 +58,29 @@ def build_report_pdf(user_name: str, tax_year: str, result: TaxComputationResult
         ]))
         story.append(summary_table)
         story.append(Spacer(1, 0.5 * cm))
+
+        item_sections = [
+            ("Income", items.get("income_items", [])),
+            ("Allowable Deductions", items.get("deduction_items", [])),
+            ("Capital Allowances", items.get("capital_allowance_items", [])),
+            ("Statutory Reliefs", items.get("relief_items", [])),
+        ]
+        if any(entries for _, entries in item_sections):
+            story.append(Paragraph("Itemized Breakdown", styles["Heading2"]))
+            for section_label, entries in item_sections:
+                if not entries:
+                    continue
+                story.append(Paragraph(section_label, styles["Heading3"]))
+                item_data = [["Category", "Amount"]] + [
+                    [entry["category_name"], f"₦{entry['amount']:,.2f}"] for entry in entries
+                ]
+                item_table = Table(item_data, colWidths=[9 * cm, 6 * cm])
+                item_table.setStyle(TableStyle([
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+                ]))
+                story.append(item_table)
+                story.append(Spacer(1, 0.3 * cm))
 
         story.append(Paragraph("Band-by-band computation (Fourth Schedule)", styles["Heading2"]))
         band_data = [["Rate", "Amount in Band", "Tax"]]

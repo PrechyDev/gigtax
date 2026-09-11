@@ -8,7 +8,12 @@ from models.tax import TaxComputation, TaxReport
 from models.user import User
 from modules.reporting.generator import build_report_pdf
 from modules.tax_computation.engine import compute_tax
-from modules.tax_computation.loader import load_capital_allowances_for_year, load_categorized_transactions
+from modules.tax_computation.loader import (
+    load_capital_allowance_items,
+    load_capital_allowances_for_year,
+    load_categorized_transactions,
+)
+from modules.tax_computation.reporting_helpers import build_itemized_breakdown
 from services.drive_service import DriveService
 
 router = APIRouter(prefix="/tax-computations", tags=["reports"])
@@ -47,8 +52,10 @@ def download_report(
     """
     transactions = load_categorized_transactions(db, current_user, tax_year)
     capital_allowances = load_capital_allowances_for_year(db, current_user.user_id, tax_year)
+    capital_allowance_items = load_capital_allowance_items(db, current_user.user_id, tax_year)
     result = compute_tax(transactions, capital_allowances_this_year=capital_allowances)
-    pdf_bytes = build_report_pdf(current_user.name, tax_year, result)
+    items = build_itemized_breakdown(db, transactions, capital_allowance_items)
+    pdf_bytes = build_report_pdf(current_user.name, tax_year, result, items)
 
     if current_user.google_drive_connected:
         try:

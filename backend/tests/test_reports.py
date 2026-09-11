@@ -1,4 +1,7 @@
+import io
 from unittest.mock import patch
+
+import pdfplumber
 
 
 def _auth_header(client, email="report-user@example.com"):
@@ -21,6 +24,28 @@ def test_download_report_returns_a_pdf(client):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.content.startswith(b"%PDF")
+
+
+def test_report_includes_itemized_category_breakdown(client):
+    headers = _auth_header(client, "report-user5@example.com")
+    client.post("/transactions", json={
+        "transaction_type": "income", "date": "2026-03-01T00:00:00Z",
+        "description": "Payment", "amount": 2_000_000, "category_slug": "freelance_gig_fees",
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "Adobe subscription", "amount": 50_000, "category_slug": "exp_software_subscriptions",
+    }, headers=headers)
+
+    response = client.get("/tax-computations/2026/report", headers=headers)
+    assert response.status_code == 200
+
+    with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+    assert "Itemized Breakdown" in text
+    assert "Professional Gig Fees" in text
+    assert "Software & Subscriptions" in text
 
 
 def test_report_works_even_with_zero_transactions(client):
