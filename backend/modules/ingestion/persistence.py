@@ -12,6 +12,7 @@ from models.transaction import ExpenseRecord, IncomeRecord, Transaction
 from models.user import User
 from modules.ai_categorization.schemas import ParsedTransaction
 from modules.ingestion.asset_sync import sync_asset_for_transaction
+from modules.tax_computation.loader import load_annual_tax_profile
 
 UNCATEGORIZED_SLUG = "uncategorized"
 HOME_OFFICE_TAX_TREATMENT = "100_percent_deductible_home_office"
@@ -42,11 +43,12 @@ def persist_parsed_transaction(
     statement_id: UUID | None,
 ) -> Transaction:
     category = _resolve_category(db, parsed.category_slug)
+    transaction_date = _parse_transaction_date(parsed.date)
 
     common_kwargs = dict(
         user_id=user.user_id,
         statement_id=statement_id,
-        date=_parse_transaction_date(parsed.date),
+        date=transaction_date,
         description=parsed.description,
         amount=parsed.amount,
         ai_category_id=category.category_id if category else None,
@@ -59,12 +61,14 @@ def persist_parsed_transaction(
         record = IncomeRecord(**common_kwargs, income_source=parsed.income_source)
     else:
         record = ExpenseRecord(**common_kwargs, merchant_name=parsed.merchant_name)
-        if (
-            category
-            and category.tax_treatment == HOME_OFFICE_TAX_TREATMENT
-            and user.has_home_office
-        ):
-            record.deductibility_percentage = user.home_office_percentage
+        if category and category.tax_treatment == HOME_OFFICE_TAX_TREATMENT:
+            # Home-office % is scoped to the tax year the transaction actually falls
+            # in — not "whatever the setting is right now" — so backfilling an old
+            # statement after changing this year's setup still gets that year's
+            # figure. See models/annual_tax_profile.py.
+            annual_profile = load_annual_tax_profile(db, user.user_id, str(transaction_date.year))
+            if annual_profile and annual_profile.has_home_office:
+                record.deductibility_percentage = annual_profile.home_office_percentage
 
     db.add(record)
     db.flush()  # assigns record.transaction_id, needed by sync_asset_for_transaction

@@ -77,8 +77,8 @@ def test_report_includes_profile_fields_and_records_period(client):
 
 def test_report_shows_deduction_rate_for_home_office_expense(client):
     headers = _auth_header(client, "report-user7@example.com")
-    client.patch("/auth/me", json={
-        "has_home_office": True, "home_office_percentage": 30,
+    client.put("/tax-computations/2026/annual-profile", json={
+        "annual_rent_paid": None, "has_home_office": True, "home_office_percentage": 30,
     }, headers=headers)
     client.post("/transactions", json={
         "transaction_type": "income", "date": "2026-03-01T00:00:00Z",

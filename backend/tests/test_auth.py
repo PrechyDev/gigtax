@@ -126,8 +126,6 @@ def test_patch_me_updates_only_supplied_fields(client):
     response = client.patch("/auth/me", json={
         "occupation_type": "content creator",
         "tin": "12345678-0001",
-        "has_home_office": True,
-        "home_office_percentage": 25.0,
     }, headers=headers)
 
     assert response.status_code == 200
@@ -135,19 +133,11 @@ def test_patch_me_updates_only_supplied_fields(client):
     assert body["name"] == "Update User"  # untouched
     assert body["occupation_type"] == "content creator"
     assert body["tin"] == "12345678-0001"
-    assert body["has_home_office"] is True
-    assert body["home_office_percentage"] == 25.0
 
 
 def test_patch_me_rejects_invalid_tax_year(client):
     headers = _register_and_get_headers(client, "update-user2@example.com")
     response = client.patch("/auth/me", json={"tax_year": "abcd"}, headers=headers)
-    assert response.status_code == 422
-
-
-def test_patch_me_rejects_home_office_percentage_out_of_range(client):
-    headers = _register_and_get_headers(client, "update-user3@example.com")
-    response = client.patch("/auth/me", json={"home_office_percentage": 150}, headers=headers)
     assert response.status_code == 422
 
 

@@ -149,6 +149,59 @@ def test_patch_transaction_approves_and_recategorizes(client):
     assert body["tax_treatment"] == "100_percent_deductible"
 
 
+def test_manual_home_office_expense_applies_that_years_deductibility_percentage(client):
+    headers = _auth_header(client, "tx-user-hoexp@example.com")
+    client.put("/tax-computations/2026/annual-profile", json={
+        "annual_rent_paid": None, "has_home_office": True, "home_office_percentage": 40,
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "PHCN bill", "amount": 100_000, "category_slug": "exp_power_utilities",
+    }, headers=headers)
+
+    response = client.post("/tax-computations/2026/compute", headers=headers)
+    assert response.json()["total_deductions"] == 40_000  # 40% of 100,000
+
+
+def test_recategorizing_into_home_office_applies_that_years_percentage(client):
+    """Previously, correcting a transaction's category to a home-office one after the
+    fact left its deductibility stuck at whatever it started as (100%, since ingestion
+    only stamps this once, at creation) — the correction below must actually apply the
+    right rate, not silently leave it fully deductible.
+    """
+    headers = _auth_header(client, "tx-user-hoexp2@example.com")
+    client.put("/tax-computations/2026/annual-profile", json={
+        "annual_rent_paid": None, "has_home_office": True, "home_office_percentage": 30,
+    }, headers=headers)
+    create = client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "Utility bill", "amount": 100_000, "category_slug": "exp_software_subscriptions",
+    }, headers=headers).json()
+    client.patch(f"/transactions/{create['transaction_id']}", json={
+        "category_slug": "exp_power_utilities",
+    }, headers=headers)
+
+    response = client.post("/tax-computations/2026/compute", headers=headers)
+    assert response.json()["total_deductions"] == 30_000
+
+
+def test_recategorizing_out_of_home_office_resets_deductibility_to_full(client):
+    headers = _auth_header(client, "tx-user-hoexp3@example.com")
+    client.put("/tax-computations/2026/annual-profile", json={
+        "annual_rent_paid": None, "has_home_office": True, "home_office_percentage": 30,
+    }, headers=headers)
+    create = client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "Power bill", "amount": 100_000, "category_slug": "exp_power_utilities",
+    }, headers=headers).json()
+    client.patch(f"/transactions/{create['transaction_id']}", json={
+        "category_slug": "exp_software_subscriptions",
+    }, headers=headers)
+
+    response = client.post("/tax-computations/2026/compute", headers=headers)
+    assert response.json()["total_deductions"] == 100_000
+
+
 def test_transactions_require_auth(client):
     response = client.get("/transactions")
     assert response.status_code == 401

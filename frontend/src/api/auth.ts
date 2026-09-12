@@ -8,9 +8,6 @@ export interface UserProfile {
   state_residence: string | null
   tax_year: string | null
   tin: string | null
-  has_home_office: boolean
-  home_office_percentage: number
-  annual_rent_paid: number | null
   google_drive_connected: boolean
 }
 
@@ -35,9 +32,6 @@ export interface ProfileUpdateInput {
   state_residence?: string
   tax_year?: string
   tin?: string
-  has_home_office?: boolean
-  home_office_percentage?: number
-  annual_rent_paid?: number
 }
 
 export function register(input: RegisterInput) {

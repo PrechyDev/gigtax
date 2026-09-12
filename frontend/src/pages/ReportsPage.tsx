@@ -1,13 +1,13 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
 import { getFilingGuidance } from '../api/filingGuidance'
+import { getAnnualTaxProfile, updateAnnualTaxProfile, type AnnualTaxProfileInput } from '../api/annualTaxProfile'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
-import { ErrorBanner } from '../components/ui/Banner'
+import { ErrorBanner, SuccessBanner } from '../components/ui/Banner'
 import { PageSpinner } from '../components/ui/Spinner'
 import { YearSelector } from '../components/ui/YearSelector'
 import { ApiError } from '../lib/apiClient'
@@ -32,6 +32,13 @@ export function ReportsPage() {
   const filingGuidanceQuery = useQuery({
     queryKey: ['filing-guidance', user?.state_residence],
     queryFn: () => getFilingGuidance(user?.state_residence ?? undefined),
+  })
+
+  // Shares its cache/network request with RentHomeOfficePanel below (same query key) —
+  // fetched here too just to drive the "Paying rent?" hint on the Statutory Reliefs row.
+  const annualProfileQuery = useQuery({
+    queryKey: ['annual-tax-profile', taxYear],
+    queryFn: () => getAnnualTaxProfile(taxYear),
   })
 
   const computeMutation = useMutation({
@@ -87,6 +94,10 @@ export function ReportsPage() {
         </div>
       )}
 
+      <div className="mb-6">
+        <RentHomeOfficePanel taxYear={taxYear} />
+      </div>
+
       {computationQuery.isLoading && <PageSpinner />}
 
       {notComputedYet && (
@@ -136,13 +147,13 @@ export function ReportsPage() {
               value={-computationQuery.data.total_reliefs}
               items={computationQuery.data.relief_items}
               emptyHint={
-                !user?.annual_rent_paid ? (
+                !annualProfileQuery.data?.annual_rent_paid ? (
                   <>
                     Paying rent?{' '}
-                    <Link to="/settings" className="text-blue hover:underline">
-                      Add it in Settings
-                    </Link>{' '}
-                    to claim rent relief automatically.
+                    <a href="#rent-home-office" className="text-blue hover:underline">
+                      Add it above
+                    </a>{' '}
+                    to claim rent relief automatically for {taxYear}.
                   </>
                 ) : undefined
               }
@@ -185,6 +196,159 @@ export function ReportsPage() {
         </div>
       )}
     </AppShell>
+  )
+}
+
+function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
+  const queryClient = useQueryClient()
+  const previousYear = String(Number(taxYear) - 1)
+
+  const profileQuery = useQuery({
+    queryKey: ['annual-tax-profile', taxYear],
+    queryFn: () => getAnnualTaxProfile(taxYear),
+  })
+  // Fetched purely to power the "copy last year's numbers" shortcut below — cheap,
+  // and avoids the user having to remember and retype the same rent figure every year.
+  const previousProfileQuery = useQuery({
+    queryKey: ['annual-tax-profile', previousYear],
+    queryFn: () => getAnnualTaxProfile(previousYear),
+  })
+
+  const [form, setForm] = useState<{
+    annual_rent_paid: number | ''
+    has_home_office: boolean
+    home_office_percentage: number
+  }>({ annual_rent_paid: '', has_home_office: false, home_office_percentage: 0 })
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (profileQuery.data) {
+      setForm({
+        annual_rent_paid: profileQuery.data.annual_rent_paid ?? '',
+        has_home_office: profileQuery.data.has_home_office,
+        home_office_percentage: profileQuery.data.home_office_percentage,
+      })
+      setSuccess(false)
+      setError(null)
+    }
+  }, [profileQuery.data])
+
+  const mutation = useMutation({
+    mutationFn: (input: AnnualTaxProfileInput) => updateAnnualTaxProfile(taxYear, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['annual-tax-profile', taxYear] })
+      setSuccess(true)
+      setError(null)
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not save this.'),
+  })
+
+  function handleSave(e: FormEvent) {
+    e.preventDefault()
+    setSuccess(false)
+    mutation.mutate({
+      annual_rent_paid: form.annual_rent_paid === '' ? null : Number(form.annual_rent_paid),
+      has_home_office: form.has_home_office,
+      home_office_percentage: form.home_office_percentage,
+    })
+  }
+
+  function copyFromPreviousYear() {
+    if (!previousProfileQuery.data) return
+    setForm({
+      annual_rent_paid: previousProfileQuery.data.annual_rent_paid ?? '',
+      has_home_office: previousProfileQuery.data.has_home_office,
+      home_office_percentage: previousProfileQuery.data.home_office_percentage,
+    })
+  }
+
+  if (profileQuery.isLoading) return null
+
+  const isBlank =
+    !!profileQuery.data && profileQuery.data.annual_rent_paid === null && !profileQuery.data.has_home_office
+  const previousHasData =
+    !!previousProfileQuery.data &&
+    (previousProfileQuery.data.annual_rent_paid !== null || previousProfileQuery.data.has_home_office)
+
+  return (
+    <div id="rent-home-office" className="scroll-mt-6 rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-navy">Rent &amp; Home Office — {taxYear}</h3>
+        {isBlank && previousHasData && (
+          <button type="button" onClick={copyFromPreviousYear} className="text-sm text-blue hover:underline">
+            Copy {previousYear}'s numbers
+          </button>
+        )}
+      </div>
+      <p className="mb-4 text-sm text-on-surface-variant">
+        Rent, and how much of your home you use for work, can change year to year — this is set for {taxYear}{' '}
+        specifically and won't affect any other year.
+      </p>
+
+      {error && (
+        <div className="mb-3">
+          <ErrorBanner message={error} onDismiss={() => setError(null)} />
+        </div>
+      )}
+      {success && (
+        <div className="mb-3">
+          <SuccessBanner
+            message={`Saved for ${taxYear} — click Recompute above to refresh your tax summary.`}
+            onDismiss={() => setSuccess(false)}
+          />
+        </div>
+      )}
+
+      <form onSubmit={handleSave} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-on-surface-variant">Annual Rent Paid (NGN)</label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.annual_rent_paid}
+            onChange={(e) =>
+              setForm({ ...form, annual_rent_paid: e.target.value === '' ? '' : Number(e.target.value) })
+            }
+            className="h-11 w-full max-w-xs rounded-lg border border-outline-variant px-3 text-sm focus:border-blue focus:outline-none focus:ring-1 focus:ring-blue"
+          />
+        </div>
+
+        <div className="rounded-lg border border-outline-variant p-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.has_home_office}
+              onChange={(e) => setForm({ ...form, has_home_office: e.target.checked })}
+            />
+            <span className="text-sm font-semibold">Home Office Deduction</span>
+          </label>
+          {form.has_home_office && (
+            <div className="mt-3">
+              <label className="mb-1 block text-sm text-on-surface-variant">
+                {form.home_office_percentage}% of your rent counts as a home-office business expense
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={form.home_office_percentage}
+                onChange={(e) => setForm({ ...form, home_office_percentage: Number(e.target.value) })}
+                className="w-full"
+              />
+              <p className="mt-1 text-xs text-emerald-dark">
+                The rest of your rent still counts toward your rent relief (20%, capped at ₦500,000).
+              </p>
+            </div>
+          )}
+        </div>
+
+        <Button type="submit" isLoading={mutation.isPending}>
+          Save for {taxYear}
+        </Button>
+      </form>
+    </div>
   )
 }
 

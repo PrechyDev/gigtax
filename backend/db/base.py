@@ -12,3 +12,4 @@ from models.asset import Asset
 from models.tax import TaxComputation, TaxReport
 from models.advisory import AIAdvisoryQuery
 from models.knowledge_chunk import KnowledgeChunk
+from models.annual_tax_profile import AnnualTaxProfile

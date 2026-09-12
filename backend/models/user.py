@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, func, Boolean, Float
+from sqlalchemy import Column, String, DateTime, func, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -16,9 +16,6 @@ class User(Base):
     state_residence = Column(String(50))
     tax_year = Column(String(4))
     tin = Column(String(20), nullable=True)  # Tax Identification Number
-    has_home_office = Column(Boolean, default=False)
-    home_office_percentage = Column(Float, default=0.0) # E.g., 20.0 for 20%
-    annual_rent_paid = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Google Drive BYOS (Bring Your Own Storage)
@@ -33,3 +30,4 @@ class User(Base):
     transactions = relationship("Transaction", back_populates="user", cascade="all, delete-orphan")
     advisory_queries = relationship("AIAdvisoryQuery", back_populates="user", cascade="all, delete-orphan")
     assets = relationship("Asset", back_populates="user", cascade="all, delete-orphan")
+    annual_tax_profiles = relationship("AnnualTaxProfile", back_populates="user", cascade="all, delete-orphan")

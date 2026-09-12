@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from models.annual_tax_profile import AnnualTaxProfile
 from models.asset import Asset
 from models.category import Category
 from models.transaction import Transaction
@@ -35,18 +36,32 @@ SYNTHETIC_CATEGORY_LABELS: dict[str, str] = {
 }
 
 
-def _rent_categorized_transactions(user: User) -> list[CategorizedTransaction]:
-    """Rent is a profile field, not a transaction — the user's home-office
-    percentage splits it at computation time rather than requiring them to
-    manually enter two separate ledger records. The home-office share becomes
-    a Business Expense; the remainder feeds the existing rent-relief handling
-    in engine.py (which itself applies the 20%/cap rule) unchanged.
+def load_annual_tax_profile(db: Session, user_id: UUID, tax_year: str) -> AnnualTaxProfile | None:
+    """Rent paid and home-office claim are scoped to a single tax year (see
+    models/annual_tax_profile.py) — this is the one place that query lives, shared by
+    the rent-relief calculation below, ingestion's home-office deductibility stamping
+    (modules/ingestion/persistence.py), and manual entry / recategorization
+    (api/routes/transactions.py), so all three agree on "which year's row applies."
     """
-    if not user.annual_rent_paid or user.annual_rent_paid <= 0:
+    return (
+        db.query(AnnualTaxProfile)
+        .filter(AnnualTaxProfile.user_id == user_id, AnnualTaxProfile.tax_year == tax_year)
+        .first()
+    )
+
+
+def _rent_categorized_transactions(annual_profile: AnnualTaxProfile | None) -> list[CategorizedTransaction]:
+    """Rent is a per-year profile field, not a transaction — the user's home-office
+    percentage for that year splits it at computation time rather than requiring them
+    to manually enter two separate ledger records. The home-office share becomes a
+    Business Expense; the remainder feeds the existing rent-relief handling in
+    engine.py (which itself applies the 20%/cap rule) unchanged.
+    """
+    if annual_profile is None or not annual_profile.annual_rent_paid or annual_profile.annual_rent_paid <= 0:
         return []
 
-    home_office_share = user.annual_rent_paid * (user.home_office_percentage or 0.0) / 100.0
-    remainder = user.annual_rent_paid - home_office_share
+    home_office_share = annual_profile.annual_rent_paid * (annual_profile.home_office_percentage or 0.0) / 100.0
+    remainder = annual_profile.annual_rent_paid - home_office_share
 
     synthesized = []
     if home_office_share > 0:
@@ -95,7 +110,8 @@ def load_categorized_transactions(db: Session, user: User, tax_year: str) -> lis
             tax_treatment=tx.tax_treatment,
             deductibility_percentage=getattr(tx, "deductibility_percentage", 100.0) or 100.0,
         ))
-    result.extend(_rent_categorized_transactions(user))
+    annual_profile = load_annual_tax_profile(db, user.user_id, tax_year)
+    result.extend(_rent_categorized_transactions(annual_profile))
     return result
 
 

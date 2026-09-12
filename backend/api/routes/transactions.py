@@ -12,7 +12,8 @@ from models.category import Category
 from models.transaction import ExpenseRecord, IncomeRecord, Transaction
 from models.user import User
 from modules.ingestion.asset_sync import sync_asset_for_transaction
-from modules.ingestion.persistence import UNCATEGORIZED_SLUG
+from modules.ingestion.persistence import HOME_OFFICE_TAX_TREATMENT, UNCATEGORIZED_SLUG
+from modules.tax_computation.loader import load_annual_tax_profile
 from schemas.transaction import (
     BulkTransactionDelete,
     BulkTransactionReview,
@@ -22,6 +23,20 @@ from schemas.transaction import (
 )
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
+
+
+def _home_office_deductibility(db: Session, user_id, year: int, category: Category | None) -> float:
+    """The % of a home-office-treated expense that's actually deductible, scoped to
+    the tax year the expense's own date falls in (not "whatever's set right now") —
+    see models/annual_tax_profile.py. Anything not home-office-treated is fully
+    deductible, same as the ExpenseRecord.deductibility_percentage column default.
+    """
+    if not category or category.tax_treatment != HOME_OFFICE_TAX_TREATMENT:
+        return 100.0
+    annual_profile = load_annual_tax_profile(db, user_id, str(year))
+    if annual_profile and annual_profile.has_home_office:
+        return annual_profile.home_office_percentage
+    return 100.0
 
 
 @router.post("", response_model=TransactionOut, status_code=status.HTTP_201_CREATED)
@@ -58,8 +73,7 @@ def create_manual_transaction(
         record = IncomeRecord(**common_kwargs, income_source=payload.income_source)
     else:
         record = ExpenseRecord(**common_kwargs, merchant_name=payload.merchant_name)
-        if category and category.tax_treatment == "100_percent_deductible_home_office" and current_user.has_home_office:
-            record.deductibility_percentage = current_user.home_office_percentage
+        record.deductibility_percentage = _home_office_deductibility(db, current_user.user_id, payload.date.year, category)
 
     db.add(record)
     db.flush()  # assigns record.transaction_id, needed by sync_asset_for_transaction
@@ -213,6 +227,14 @@ def review_transaction(
         # Keep the assets table in sync — this correction might turn a normal expense
         # into a capital item (or vice versa) if the AI mis-tagged it originally.
         sync_asset_for_transaction(db, transaction, category)
+        # Same correction for deductibility: a category change into or out of the
+        # home-office treatment must re-derive the % (ingestion only stamps this once,
+        # at creation time — a later recategorization was previously left stale at
+        # whatever it started as, silently understating or overstating the deduction).
+        if isinstance(transaction, ExpenseRecord):
+            transaction.deductibility_percentage = _home_office_deductibility(
+                db, current_user.user_id, transaction.date.year, category
+            )
 
     if payload.review_status is not None:
         _apply_review_status(transaction, payload.review_status)

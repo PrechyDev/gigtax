@@ -14,8 +14,8 @@ def test_list_categories_returns_the_full_seeded_taxonomy(client):
     assert "freelance_gig_fees" in slugs
     assert "relief_pension_voluntary" in slugs
     assert "asset_computer_equipment" in slugs
-    # Rent relief is now a profile field (User.annual_rent_paid), computed
-    # automatically — no longer a manually-selectable category. See
+    # Rent relief is now a per-tax-year field (AnnualTaxProfile.annual_rent_paid),
+    # computed automatically — no longer a manually-selectable category. See
     # modules/tax_computation/loader.py::_rent_categorized_transactions.
     assert "relief_residential_rent" not in slugs
 
