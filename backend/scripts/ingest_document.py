@@ -20,6 +20,7 @@ def main() -> None:
     args = parser.parse_args()
 
     db = SessionLocal()
+    print(f"Ingesting '{args.file_path}' as '{args.title}'...")
     try:
         count = ingest_document(db, args.file_path, args.title)
         print(f"Ingested {count} chunks from '{args.title}'.")

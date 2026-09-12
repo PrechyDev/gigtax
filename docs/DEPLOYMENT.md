@@ -51,30 +51,36 @@ avoided — see `BUILD_PLAN.md` §6 for why).
 4. **Runtime**: Python 3
 5. **Build Command**:
    ```
-   pip install poetry && poetry install --no-root && poetry run python -m spacy download en_core_web_lg
+   pip install poetry && poetry install --no-root && poetry run python -m spacy download en_core_web_sm
    ```
    **The `spacy download` step is easy to miss and the app will crash without it.** PII sanitization
-   (`modules/ai_categorization/sanitization.py`) uses Presidio's default `AnalyzerEngine()`, which
-   loads spaCy's `en_core_web_lg` model — a separate ~560MB download that `poetry install` does
-   **not** fetch on its own (it's not a pip package, it's a spaCy model artifact). Locally this model
-   was already present on the dev machine from an earlier manual step, so this gap wasn't obvious
-   until checked directly. Without this build step, the first statement upload after deploy fails
-   inside `get_analyzer()`.
-   - If Render's free build times out or runs low on disk with the `lg` model, swap in
-     `en_core_web_sm` (~13MB) instead — smaller and faster, at some cost to PERSON/LOCATION
-     detection accuracy (format-based redaction — phone/email/card/IBAN — is unaffected either way,
-     since that doesn't depend on the NLP model at all; see `ALWAYS_REDACTED_ENTITIES` in
-     `sanitization.py`).
-6. **Pre-Deploy Command** (runs before the new instance takes traffic):
+   (`modules/ai_categorization/sanitization.py`) needs a spaCy model — a separate download that
+   `poetry install` does **not** fetch on its own (it's not a pip package, it's a spaCy model
+   artifact). Without this build step, the first statement upload after deploy fails inside
+   `get_analyzer()`.
+   - **Use `en_core_web_sm` (~13MB), not the larger `en_core_web_lg` (~560MB)** — confirmed in
+     production: `en_core_web_lg`'s word vectors alone use several hundred MB once loaded, which
+     reliably OOMs Render's free tier (512MB RAM total) and takes the *entire* app down, not just
+     statement uploads. `get_analyzer()` explicitly configures Presidio to load `en_core_web_sm` by
+     name — it does not follow whatever `AnalyzerEngine()`'s own default is, so the build command and
+     the code must agree on which model is actually installed. Format-based redaction (phone/email/
+     card/IBAN — see `ALWAYS_REDACTED_ENTITIES` in `sanitization.py`) doesn't depend on the model
+     size at all; only PERSON/LOCATION detection accuracy is (mildly) affected.
+6. **Start Command** — runs migrations, then starts the server:
    ```
-   poetry run alembic upgrade head
+   poetry run alembic upgrade head && poetry run uvicorn main:app --host 0.0.0.0 --port $PORT
    ```
-   Never run migrations by hand against the deployed database — this is the one place they run.
-7. **Start Command**:
-   ```
-   poetry run uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
-8. **Environment variables** — add these in the Render dashboard (Environment tab), not in a
+   **Render's free tier has no "Pre-Deploy Command" field** (that's a paid-plan feature) — an
+   earlier version of this guide assumed one existed and named it as the place migrations run. It
+   doesn't exist on free, so a fresh deploy without this fix serves traffic against a database that
+   was never migrated at all: every query 500s with `psycopg2.errors.UndefinedTable`, first noticed
+   here when the scheduled cleanup job tried to touch a `transactions` table that didn't exist.
+   Folding the migration into the Start Command instead means it runs before uvicorn starts,
+   every single time the service starts — including after Render's free-tier idle spin-down, not
+   just on a fresh deploy. `alembic upgrade head` is idempotent (a no-op once already at head), so
+   this is safe to run on every cold start, at the cost of a few extra seconds before the app
+   answers its first request after waking up.
+7. **Environment variables** — add these in the Render dashboard (Environment tab), not in a
    committed file:
 
    | Key | Value |
@@ -96,8 +102,9 @@ avoided — see `BUILD_PLAN.md` §6 for why).
    would have made pointing at Neon's SSL-required connection string awkward. That gap is fixed as
    part of writing this guide; don't set the discrete `POSTGRES_*` vars in Render at all.
 
-9. Deploy. Watch the build logs for the spaCy download completing and for the pre-deploy Alembic
-   step succeeding before assuming it's live.
+8. Deploy. Watch the logs for the spaCy download completing during build, then for the Alembic
+   migration succeeding right at the start of the run logs (before "Uvicorn running on...") before
+   assuming it's live.
 
 ### 2.2 Known free-tier trade-off
 Render's free web service spins down after ~15 minutes of inactivity. The first request after an
@@ -174,12 +181,12 @@ deploy.
 ## 5. Redeploying after a change
 
 - **Frontend-only change**: push to the connected branch — Vercel redeploys automatically.
-- **Backend-only change**: push — Render redeploys automatically, running the pre-deploy migration
-  step again (a no-op if there's nothing new to migrate).
-- **New Alembic migration**: just push it — Render's pre-deploy command (`alembic upgrade head`)
-  applies it before the new instance takes traffic. Never run a migration by hand against Neon from
-  your machine as part of normal deploys; §2.3's manual `ingest_document` run is the one deliberate
-  exception, since it's a content-seeding script, not a schema migration.
+- **Backend-only change**: push — Render redeploys automatically, running the migration step in the
+  Start Command again (a no-op if there's nothing new to migrate).
+- **New Alembic migration**: just push it — the Start Command's `alembic upgrade head` applies it on
+  the very next start (deploy or cold-start wake-up alike). Never run a migration by hand against
+  Neon from your machine as part of normal deploys; §2.3's manual `ingest_document` run is the one
+  deliberate exception, since it's a content-seeding script, not a schema migration.
 - **Rotated a secret** (`JWT_SECRET_KEY`, `FERNET_SECRET_KEY`): update it in Render's dashboard and
   manually trigger a redeploy (env var changes alone don't auto-redeploy on Render). Rotating
   `JWT_SECRET_KEY` invalidates every existing login token (users just log in again). Rotating
@@ -192,8 +199,10 @@ deploy.
 
 | Symptom | Likely cause |
 |---|---|
-| Backend 500s on every request right after deploy | `DATABASE_URL` missing/wrong, or `CREATE EXTENSION vector;` (§1.3) was never run on Neon |
+| Backend 500s on every request right after deploy, or logs show `psycopg2.errors.UndefinedTable: relation "..." does not exist` | The Start Command's `alembic upgrade head` isn't actually running (check it's really part of the Start Command, not left over as a separate Pre-Deploy Command field that doesn't exist on Render's free tier) — or `DATABASE_URL` is missing/wrong. As an immediate unblock, run migrations by hand once: `DATABASE_URL="<neon connection string>" poetry run alembic upgrade head` from your own machine |
+| Backend 500s specifically on anything touching the AI Advisor | `CREATE EXTENSION vector;` (§1.3) was never run on Neon |
 | First statement upload fails inside categorization | spaCy model wasn't downloaded during build (§2.1 step 5) |
+| The whole app stops responding / Render shows an out-of-memory restart | You're on `en_core_web_lg` instead of `en_core_web_sm` — confirmed in production, the `lg` model's word vectors alone exceed the free tier's 512MB RAM. Switch the Build Command *and* `get_analyzer()`'s `model_name` to `en_core_web_sm`, then redeploy |
 | Frontend loads but every API call fails as a CORS error | `FRONTEND_URL` on Render doesn't exactly match the Vercel URL (scheme + host, no trailing slash) |
 | Refreshing `/ledger` (or any non-root route) 404s on Vercel | `vercel.json` rewrite missing or not deployed |
 | "Connect Drive" redirects to a Google error page | `GOOGLE_REDIRECT_URI` (Render env var) doesn't exactly match an Authorized redirect URI registered in Google Cloud Console |

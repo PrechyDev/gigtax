@@ -17,8 +17,15 @@ from services.drive_service import DriveService, build_auth_flow
 router = APIRouter(prefix="/auth/google", tags=["google-drive"])
 logger = get_logger(__name__)
 
-# Short-lived — this token only needs to survive the round trip through Google's consent screen.
-STATE_TOKEN_EXPIRE_MINUTES = 10
+# Short-lived, but 10 minutes turned out too tight in production: on Render's free
+# tier a cold-started backend (plus the Alembic check that now runs on every start)
+# eats real time before /connect even redirects, and a first-time consent on an
+# OAuth client still in Google's "Testing" publishing status adds an "unverified app"
+# interstitial the user has to click through — the combined round trip through
+# Google's consent screen comfortably exceeded 10 minutes and failed at /callback
+# with "Invalid or expired state" even though nothing was actually wrong. Still
+# short-lived, just no longer tight enough to fail on a normal first connection.
+STATE_TOKEN_EXPIRE_MINUTES = 30
 
 
 @router.get("/connect")

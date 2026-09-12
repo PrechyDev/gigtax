@@ -24,6 +24,19 @@ def _format_period(period_start: datetime | None, period_end: datetime | None) -
     return f"{period_start.strftime('%d %b %Y')} – {period_end.strftime('%d %b %Y')}"
 
 
+def _money(amount: float, *, negative: bool = False) -> str:
+    """Reportlab's built-in PDF fonts (Helvetica etc.) have no glyph for '₦' —
+    without embedding a real Unicode font, it prints as a black tofu box, which is
+    exactly what this avoids. The web report can use '₦' directly because a browser
+    always has a system font to fall back on; a PDF has only whatever font is
+    embedded in it. `negative` prepends the minus sign the web page shows for
+    deductions/capital allowances/reliefs (see ReportsPage.tsx's `-computationQuery.
+    data.total_deductions` etc.) — this function is only ever handed a magnitude.
+    """
+    sign = "-" if negative and amount > 0 else ""
+    return f"{sign}NGN {amount:,.2f}"
+
+
 def build_report_pdf(
     user_name: str,
     tax_year: str,
@@ -50,14 +63,35 @@ def build_report_pdf(
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
     styles = getSampleStyleSheet()
+
+    # Two-up so related facts sit on the same line instead of one long single-column
+    # list — (label, value) pairs, two per row.
+    info_pairs = [
+        ("Prepared for", user_name),
+        ("TIN", tin or "Not provided"),
+        ("State of Residence", state_residence or "Not provided"),
+        ("Occupation", occupation_type or "Not provided"),
+        ("Records Covered", _format_period(period_start, period_end)),
+        ("Generated", datetime.now().strftime("%Y-%m-%d %H:%M")),
+    ]
+    info_rows = []
+    for i in range(0, len(info_pairs), 2):
+        pair = info_pairs[i : i + 2]
+        row = [Paragraph(f"<b>{label}:</b> {value}", styles["Normal"]) for label, value in pair]
+        if len(row) == 1:
+            row.append("")
+        info_rows.append(row)
+    info_table = Table(info_rows, colWidths=[8.25 * cm, 8.25 * cm])
+    info_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
     story = [
         Paragraph(f"GigTax Self-Assessment Report — {tax_year}", styles["Title"]),
-        Paragraph(f"Prepared for: {user_name}", styles["Normal"]),
-        Paragraph(f"TIN: {tin or 'Not provided'}", styles["Normal"]),
-        Paragraph(f"State of Residence: {state_residence or 'Not provided'}", styles["Normal"]),
-        Paragraph(f"Occupation: {occupation_type or 'Not provided'}", styles["Normal"]),
-        Paragraph(f"Records Covered: {_format_period(period_start, period_end)}", styles["Normal"]),
-        Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]),
+        info_table,
         Spacer(1, 0.5 * cm),
     ]
 
@@ -73,12 +107,12 @@ def build_report_pdf(
         story.append(Spacer(1, 0.3 * cm))
 
     summary_data = [
-        ["Total Income (NTA 2025 s.28)", f"₦{result.total_income:,.2f}"],
-        ["Allowable Deductions (ss.20-21)", f"₦{result.total_deductions:,.2f}"],
-        ["Capital Allowances (First Schedule)", f"₦{result.total_capital_allowances:,.2f}"],
-        ["Statutory Reliefs (s.30)", f"₦{result.total_reliefs:,.2f}"],
-        ["Chargeable Income", f"₦{result.chargeable_income:,.2f}"],
-        ["Net Tax Payable (Fourth Schedule, s.58)", f"₦{result.net_tax:,.2f}"],
+        ["Total Income (NTA 2025 s.28)", _money(result.total_income)],
+        ["Allowable Deductions (ss.20-21)", _money(result.total_deductions, negative=True)],
+        ["Capital Allowances (First Schedule)", _money(result.total_capital_allowances, negative=True)],
+        ["Statutory Reliefs (s.30)", _money(result.total_reliefs, negative=True)],
+        ["Chargeable Income", _money(result.chargeable_income)],
+        ["Net Tax Payable (Fourth Schedule, s.58)", _money(result.net_tax)],
     ]
     summary_table = Table(summary_data, colWidths=[9 * cm, 6 * cm])
     summary_table.setStyle(TableStyle([
@@ -112,16 +146,16 @@ def build_report_pdf(
                 item_data = [["Category", "Gross Amount", "Rate", "Amount Deducted"]] + [
                     [
                         entry["category_name"],
-                        f"₦{entry.get('gross_amount', entry['amount']):,.2f}",
+                        _money(entry.get("gross_amount", entry["amount"])),
                         f"{entry['rate']:.0f}%",
-                        f"₦{entry['amount']:,.2f}",
+                        _money(entry["amount"]),
                     ]
                     for entry in entries
                 ]
                 col_widths = [6.5 * cm, 4 * cm, 2 * cm, 4 * cm]
             else:
                 item_data = [["Category", "Amount"]] + [
-                    [entry["category_name"], f"₦{entry['amount']:,.2f}"] for entry in entries
+                    [entry["category_name"], _money(entry["amount"])] for entry in entries
                 ]
                 col_widths = [9 * cm, 6 * cm]
             item_table = Table(item_data, colWidths=col_widths)
@@ -139,7 +173,7 @@ def build_report_pdf(
         story.append(Paragraph("Band-by-band computation (Fourth Schedule)", styles["Heading2"]))
         band_data = [["Rate", "Amount in Band", "Tax"]]
         for band in result.band_breakdown:
-            band_data.append([f"{band.rate * 100:.0f}%", f"₦{band.amount_in_band:,.2f}", f"₦{band.tax:,.2f}"])
+            band_data.append([f"{band.rate * 100:.0f}%", _money(band.amount_in_band), _money(band.tax)])
         band_table = Table(band_data, colWidths=[3 * cm, 6 * cm, 6 * cm])
         band_table.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),

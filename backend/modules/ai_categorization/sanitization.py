@@ -1,5 +1,6 @@
 import re
 from presidio_analyzer import AnalyzerEngine, PatternRecognizer, Pattern
+from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
 
 # Lazy loading variables
@@ -31,7 +32,19 @@ def get_analyzer():
     global _analyzer
     if _analyzer is None:
         print("Loading Presidio NLP model into memory (this takes a moment)...")
-        _analyzer = AnalyzerEngine()
+        # Presidio's AnalyzerEngine() defaults to spaCy's "lg" model if not told
+        # otherwise — its word vectors alone use several hundred MB once loaded,
+        # which reliably OOMs a 512MB-RAM Render free-tier instance (confirmed: the
+        # deployed app hit exactly this and stopped responding to everything, not
+        # just statement uploads). "sm" costs some PERSON/LOCATION detection
+        # accuracy, but format-based redaction (phone, email, card, IBAN — see
+        # ALWAYS_REDACTED_ENTITIES below) is regex-based and doesn't depend on the
+        # NLP model at all, so the highest-risk PII categories are unaffected.
+        nlp_engine = NlpEngineProvider(nlp_configuration={
+            "nlp_engine_name": "spacy",
+            "models": [{"lang_code": "en", "model_name": "en_core_web_sm"}],
+        }).create_engine()
+        _analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
         setup_custom_recognizers(_analyzer)
     return _analyzer
 
