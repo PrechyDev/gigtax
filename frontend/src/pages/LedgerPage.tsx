@@ -426,8 +426,14 @@ function TransactionRow({
   const [ruleTarget, setRuleTarget] = useState<{ categorySlug: string; categoryName: string; defaultKeyword: string } | null>(
     null,
   )
+  // Only a nudge to check an untouched AI guess before acting on it — once the user
+  // has approved, discarded, or picked a category themselves, confidence_score is
+  // stale history, not a live concern, so the warning must not outlive the action.
   const isLowConfidence =
-    transaction.confidence_score !== null && transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
+    transaction.review_status === 'PENDING' &&
+    transaction.user_category_id === null &&
+    transaction.confidence_score !== null &&
+    transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
   // "uncategorized" isn't a selectable option in groupCategoriesForType (it's the AI's
   // personal/unclear fallback, not a real business category — see UNCATEGORIZED_CATEGORY_SLUG
   // above), so treating it as "a category is selected" would pre-fill the dropdown with
