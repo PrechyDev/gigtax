@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { listCategories, type Category } from '../api/categories'
@@ -14,14 +14,10 @@ import {
   type TransactionReviewInput,
 } from '../api/transactions'
 import { listReceipts, uploadReceipt } from '../api/receipts'
-import { createCustomRule } from '../api/customRules'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
-import { Button } from '../components/ui/Button'
-import { ErrorBanner, SuccessBanner } from '../components/ui/Banner'
+import { ErrorBanner } from '../components/ui/Banner'
 import { EmptyState } from '../components/ui/EmptyState'
-import { TextField } from '../components/ui/FormField'
-import { Modal } from '../components/ui/Modal'
 import { PageSpinner, Spinner } from '../components/ui/Spinner'
 import { StatusPill, reviewStatusTone } from '../components/ui/StatusPill'
 import { ApiError } from '../lib/apiClient'
@@ -104,7 +100,6 @@ export function LedgerPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const isDiscardedTab = bucket === 'discarded'
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const transactionsQuery = useInfiniteQuery({
@@ -270,11 +265,6 @@ export function LedgerPage() {
           <ErrorBanner message={error} onDismiss={() => setError(null)} />
         </div>
       )}
-      {success && (
-        <div className="mb-4">
-          <SuccessBanner message={success} onDismiss={() => setSuccess(null)} />
-        </div>
-      )}
 
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-navy px-4 py-3 text-white shadow-level-1">
@@ -368,7 +358,6 @@ export function LedgerPage() {
                   isSelected={selectedIds.has(transaction.transaction_id)}
                   onToggleSelect={() => toggleOne(transaction.transaction_id)}
                   onReview={(input) => reviewMutation.mutate({ id: transaction.transaction_id, ...input })}
-                  onRuleCreated={() => setSuccess('Rule created — future matching transactions will use it automatically.')}
                   onHardDelete={() => handleDeleteOne(transaction)}
                   isSaving={reviewMutation.isPending}
                   isDeleting={deleteOneMutation.isPending}
@@ -403,7 +392,6 @@ function TransactionRow({
   isSelected,
   onToggleSelect,
   onReview,
-  onRuleCreated,
   onHardDelete,
   isSaving,
   isDeleting,
@@ -415,17 +403,12 @@ function TransactionRow({
   isSelected: boolean
   onToggleSelect: () => void
   onReview: (input: TransactionReviewInput) => void
-  onRuleCreated: () => void
   onHardDelete: () => void
   isSaving: boolean
   isDeleting: boolean
 }) {
-  const [receiptsOpen, setReceiptsOpen] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [descriptionDraft, setDescriptionDraft] = useState(transaction.description)
-  const [ruleTarget, setRuleTarget] = useState<{ categorySlug: string; categoryName: string; defaultKeyword: string } | null>(
-    null,
-  )
   // Only a nudge to check an untouched AI guess before acting on it — once the user
   // has approved, discarded, or picked a category themselves, confidence_score is
   // stale history, not a live concern, so the warning must not outlive the action.
@@ -566,25 +549,9 @@ function TransactionRow({
               </>
             )}
           </div>
-          {selectableCategory && !isDiscardedTab && (
-            <button
-              className="mt-1 text-xs text-blue hover:underline"
-              onClick={() =>
-                setRuleTarget({
-                  categorySlug: selectableCategory.developer_slug,
-                  categoryName: selectableCategory.category_name,
-                  defaultKeyword: transaction.description.split(' ')[0],
-                })
-              }
-            >
-              + Create a rule from this
-            </button>
-          )}
         </td>
         <td className="px-4 py-3">
-          <button className="text-blue hover:underline" onClick={() => setReceiptsOpen((v) => !v)}>
-            Receipts
-          </button>
+          <ReceiptCell transactionId={transaction.transaction_id} />
         </td>
         <td className="px-4 py-3">
           {isDiscardedTab && (
@@ -600,88 +567,16 @@ function TransactionRow({
           )}
         </td>
       </tr>
-      {receiptsOpen && (
-        <tr>
-          <td colSpan={8} className="bg-surface-container-low px-4 py-3">
-            <ReceiptsPanel transactionId={transaction.transaction_id} />
-          </td>
-        </tr>
-      )}
-      {ruleTarget && (
-        <CreateRuleModal
-          target={ruleTarget}
-          onClose={() => setRuleTarget(null)}
-          onCreated={onRuleCreated}
-        />
-      )}
     </>
   )
 }
 
-function CreateRuleModal({
-  target,
-  onClose,
-  onCreated,
-}: {
-  target: { categorySlug: string; categoryName: string; defaultKeyword: string }
-  onClose: () => void
-  onCreated: () => void
-}) {
-  const [keyword, setKeyword] = useState(target.defaultKeyword)
-  const [error, setError] = useState<string | null>(null)
-
-  const mutation = useMutation({
-    mutationFn: () => createCustomRule({ keyword_pattern: keyword, assigned_category: target.categorySlug }),
-    onSuccess: () => {
-      onCreated()
-      onClose()
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not create the rule.'),
-  })
-
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    if (keyword.trim()) mutation.mutate()
-  }
-
-  return (
-    <Modal title="Create a Rule" onClose={onClose}>
-      <p className="mb-4 text-sm text-on-surface-variant">
-        Transactions matching this keyword will always be categorized as "{target.categoryName}". For a freeform
-        rule (e.g. marking a keyword as personal/non-business), use{' '}
-        <Link to="/settings" className="font-semibold text-blue hover:underline" onClick={onClose}>
-          Settings → Custom Rules
-        </Link>
-        .
-      </p>
-      {error && (
-        <div className="mb-4">
-          <ErrorBanner message={error} />
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <TextField
-          label="Keyword"
-          required
-          autoFocus
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={mutation.isPending}>
-            Create Rule
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  )
-}
-
-function ReceiptsPanel({ transactionId }: { transactionId: string }) {
+/** A single compact cell, not an expand-to-see-more panel: no receipt shows "No
+ * receipt" plus a small add control; one or more receipts show the most recent as a
+ * direct link straight to that file in Google Drive (BYOS — storage_path is the
+ * Drive file id, so this is exactly what opens it, no intermediate page needed).
+ */
+function ReceiptCell({ transactionId }: { transactionId: string }) {
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
@@ -698,37 +593,48 @@ function ReceiptsPanel({ transactionId }: { transactionId: string }) {
 
   if (!user?.google_drive_connected) {
     return (
-      <p className="text-sm text-on-surface-variant">
-        <Link to="/settings" className="font-semibold text-blue hover:underline">
-          Connect Google Drive in Settings
-        </Link>{' '}
-        to attach receipts to transactions.
-      </p>
+      <Link
+        to="/settings"
+        className="text-xs text-on-surface-variant hover:text-blue hover:underline"
+        title="Connect Google Drive in Settings to attach receipts"
+      >
+        Connect Drive
+      </Link>
     )
   }
 
+  if (receiptsQuery.isLoading) return <Spinner size={14} />
+
+  const receipts = receiptsQuery.data ?? []
+  const mostRecent = receipts.length
+    ? [...receipts].sort((a, b) => new Date(b.upload_date).getTime() - new Date(a.upload_date).getTime())[0]
+    : null
+
   return (
-    <div>
-      <p className="mb-2 text-xs italic text-on-surface-variant">Recommended, not required — attach one if you have it.</p>
-      {error && (
-        <div className="mb-2">
-          <ErrorBanner message={error} onDismiss={() => setError(null)} />
-        </div>
+    <div className="flex items-center gap-1.5">
+      {mostRecent ? (
+        <a
+          href={`https://drive.google.com/file/d/${mostRecent.storage_path}/view`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-blue hover:underline"
+          title={`Uploaded ${formatDate(mostRecent.upload_date)}`}
+        >
+          <span className="material-symbols-outlined text-base">description</span>
+          Receipt{receipts.length > 1 ? ` (${receipts.length})` : ''}
+        </a>
+      ) : (
+        <span className="text-xs text-on-surface-variant">No receipt</span>
       )}
-      {receiptsQuery.isLoading && <Spinner size={16} />}
-      {receiptsQuery.data && receiptsQuery.data.length === 0 && (
-        <p className="text-sm italic text-on-surface-variant">No receipts attached.</p>
-      )}
-      {receiptsQuery.data && receiptsQuery.data.length > 0 && (
-        <ul className="mb-2 space-y-1 text-sm">
-          {receiptsQuery.data.map((r) => (
-            <li key={r.receipt_id}>{r.file_type ?? 'file'} — uploaded {formatDate(r.upload_date)}</li>
-          ))}
-        </ul>
-      )}
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-blue">
-        {uploadMutation.isPending ? <Spinner size={14} /> : <span className="material-symbols-outlined text-lg">add</span>}
-        Upload receipt
+      <label
+        className="cursor-pointer text-on-surface-variant hover:text-blue"
+        title={mostRecent ? 'Attach another receipt' : 'Attach a receipt (recommended, not required)'}
+      >
+        {uploadMutation.isPending ? (
+          <Spinner size={14} />
+        ) : (
+          <span className="material-symbols-outlined align-middle text-base">add_circle</span>
+        )}
         <input
           type="file"
           className="hidden"
@@ -738,6 +644,7 @@ function ReceiptsPanel({ transactionId }: { transactionId: string }) {
           }}
         />
       </label>
+      {error && <span className="text-xs text-error" title={error}>⚠</span>}
     </div>
   )
 }

@@ -31,7 +31,20 @@ def build_auth_flow(state: str | None = None) -> Flow:
             "redirect_uris": [settings.GOOGLE_REDIRECT_URI],
         }
     }
-    flow = Flow.from_client_config(client_config, scopes=SCOPES, state=state)
+    # PKCE is off deliberately, not an oversight: /auth/google/connect and
+    # /auth/google/callback each build a brand-new Flow object (separate HTTP
+    # requests), so a code_verifier auto-generated on the /connect Flow instance
+    # never reaches the /callback Flow instance that needs it for the token
+    # exchange — google-auth-oauthlib >=1.2 defaults autogenerate_code_verifier to
+    # True, which surfaces as "InvalidGrantError: Missing code verifier" from
+    # Google's token endpoint. PKCE exists to protect public clients that can't
+    # hold a secret; this is a confidential server-side "web" client already
+    # authenticated by GOOGLE_CLIENT_SECRET on every token exchange, so it adds no
+    # real protection here — only re-enable it if the two legs ever share a
+    # verifier (e.g. by threading it through the `state` JWT).
+    flow = Flow.from_client_config(
+        client_config, scopes=SCOPES, state=state, autogenerate_code_verifier=False
+    )
     flow.redirect_uri = settings.GOOGLE_REDIRECT_URI
     return flow
 
