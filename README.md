@@ -2,7 +2,9 @@
 
 AI-powered tax assessment and reporting system for Nigerian self-reporting taxpayers under the
 Nigeria Tax Act 2025. See [`docs/SYSTEM_SPECIFICATION.md`](docs/SYSTEM_SPECIFICATION.md) for the full
-feature specification and [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the build/deployment plan.
+feature specification, [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) for the build/deployment plan this
+was decided from, and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the concrete step-by-step guide
+to actually deploy it (Neon + Render + Vercel).
 
 ## Local setup
 

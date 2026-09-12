@@ -6,3 +6,4 @@ class FilingGuidanceOut(BaseModel):
     portal_name: str | None
     portal_url: str | None
     note: str
+    guide_markdown: str | None = None

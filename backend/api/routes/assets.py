@@ -8,7 +8,11 @@ from api.deps import get_current_user
 from db.session import get_db
 from models.asset import Asset
 from models.user import User
-from modules.tax_computation.capital_allowances import CapitalAsset, allowance_for_year
+from modules.tax_computation.capital_allowances import (
+    CapitalAsset,
+    allowance_for_year,
+    cumulative_allowance_claimed,
+)
 from schemas.asset import AssetDisposeUpdate, AssetOut
 
 router = APIRouter(prefix="/assets", tags=["assets"])
@@ -21,6 +25,7 @@ def _to_out(asset: Asset, tax_year: int) -> AssetOut:
         acquired_year=asset.purchase_date.year,
         disposed_year=asset.disposed_date.year if (asset.disposed and asset.disposed_date) else None,
     )
+    claimed_to_date = cumulative_allowance_claimed(capital_asset, tax_year)
     return AssetOut(
         asset_id=asset.asset_id,
         transaction_id=asset.transaction_id,
@@ -31,6 +36,8 @@ def _to_out(asset: Asset, tax_year: int) -> AssetOut:
         disposed=asset.disposed,
         disposed_date=asset.disposed_date,
         current_year_allowance=allowance_for_year(capital_asset, tax_year),
+        cumulative_allowance_claimed=claimed_to_date,
+        remaining_value=max(asset.cost - claimed_to_date, 0.0),
     )
 
 

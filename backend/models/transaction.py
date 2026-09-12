@@ -19,6 +19,11 @@ class Transaction(Base):
     confidence_score = Column(Float)
     review_status = Column(String(20), default="PENDING")
     tax_treatment = Column(String(50))
+    # Set when review_status is set to REJECTED (a "discard"), cleared when it moves
+    # away from REJECTED again (a "restore"). Lets the scheduled cleanup job
+    # (core/scheduled_cleanup.py) permanently purge a discarded transaction 30 days
+    # after the discard, while it stays recoverable up to that point.
+    discarded_at = Column(DateTime(timezone=True), nullable=True)
     
     # Polymorphic identity column
     type = Column(String(50))

@@ -63,8 +63,15 @@ def test_rent_split_appears_in_itemized_breakdown(client):
 
     response = client.post("/tax-computations/2026/compute", headers=headers)
     body = response.json()
-    assert body["deduction_items"] == [{"category_name": "Rent (Home Office Portion)", "amount": 250_000}]
-    assert body["relief_items"] == [{"category_name": "Rent Relief", "amount": 150_000}]
+    assert body["deduction_items"] == [
+        {
+            "category_name": "Rent (Home Office Portion)", "amount": 250_000,
+            "gross_amount": 250_000, "rate": 100.0,
+        }
+    ]
+    assert body["relief_items"] == [
+        {"category_name": "Rent Relief", "amount": 150_000, "gross_amount": None, "rate": None}
+    ]
 
 
 def test_no_rent_paid_produces_no_synthesized_entries(client):

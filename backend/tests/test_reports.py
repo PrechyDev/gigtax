@@ -48,6 +48,57 @@ def test_report_includes_itemized_category_breakdown(client):
     assert "Software & Subscriptions" in text
 
 
+def test_report_includes_profile_fields_and_records_period(client):
+    headers = _auth_header(client, "report-user6@example.com")
+    client.patch("/auth/me", json={
+        "tin": "TIN-12345", "state_residence": "Lagos", "occupation_type": "Freelance Developer",
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "income", "date": "2026-02-10T00:00:00Z",
+        "description": "Payment", "amount": 2_000_000, "category_slug": "freelance_gig_fees",
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "income", "date": "2026-11-20T00:00:00Z",
+        "description": "Payment", "amount": 1_000_000, "category_slug": "freelance_gig_fees",
+    }, headers=headers)
+
+    response = client.get("/tax-computations/2026/report", headers=headers)
+    assert response.status_code == 200
+
+    with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+    assert "TIN-12345" in text
+    assert "Lagos" in text
+    assert "Freelance Developer" in text
+    assert "10 Feb 2026" in text
+    assert "20 Nov 2026" in text
+
+
+def test_report_shows_deduction_rate_for_home_office_expense(client):
+    headers = _auth_header(client, "report-user7@example.com")
+    client.patch("/auth/me", json={
+        "has_home_office": True, "home_office_percentage": 30,
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "income", "date": "2026-03-01T00:00:00Z",
+        "description": "Payment", "amount": 2_000_000, "category_slug": "freelance_gig_fees",
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "PHCN bill", "amount": 100_000, "category_slug": "exp_power_utilities",
+    }, headers=headers)
+
+    response = client.get("/tax-computations/2026/report", headers=headers)
+    assert response.status_code == 200
+
+    with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+    assert "Gross Amount" in text
+    assert "30%" in text
+
+
 def test_report_works_even_with_zero_transactions(client):
     headers = _auth_header(client, "report-user2@example.com")
     response = client.get("/tax-computations/2026/report", headers=headers)

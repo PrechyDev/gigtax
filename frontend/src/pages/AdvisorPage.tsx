@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
-import { getAdvisoryHistory, queryAdvisor } from '../api/advisory'
+import {
+  deleteAdvisorySession,
+  getAdvisoryHistory,
+  listAdvisorySessions,
+  queryAdvisor,
+  type AdvisorySessionSummary,
+} from '../api/advisory'
 import { AppShell } from '../components/layout/AppShell'
 import { ErrorBanner } from '../components/ui/Banner'
 import { Spinner } from '../components/ui/Spinner'
 import { ApiError } from '../lib/apiClient'
+import { formatDateTime } from '../lib/formatters'
 
 interface ChatMessage {
   id: string
@@ -23,12 +30,39 @@ const QUICK_PROMPTS = [
 ]
 
 export function AdvisorPage() {
+  const queryClient = useQueryClient()
   const [sessionId, setSessionId] = useState<string | null>(() => sessionStorage.getItem(SESSION_STORAGE_KEY))
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [failedQuestion, setFailedQuestion] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  const sessionsQuery = useQuery({
+    queryKey: ['advisory-sessions'],
+    queryFn: listAdvisorySessions,
+    enabled: historyOpen,
+  })
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: (id: string) => deleteAdvisorySession(id),
+    onSuccess: (_data, deletedId) => {
+      queryClient.invalidateQueries({ queryKey: ['advisory-sessions'] })
+      if (deletedId === sessionId) {
+        sessionStorage.removeItem(SESSION_STORAGE_KEY)
+        setSessionId(null)
+        setMessages([])
+      }
+    },
+  })
+
+  function openSession(session: AdvisorySessionSummary) {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, session.session_id)
+    setSessionId(session.session_id)
+    setMessages([])
+    setHistoryOpen(false)
+  }
 
   const historyQuery = useQuery({
     queryKey: ['advisory-history', sessionId],
@@ -54,12 +88,14 @@ export function AdvisorPage() {
     mutationFn: (question: string) => queryAdvisor(question, sessionId ?? undefined),
     onSuccess: (data, question) => {
       setFailedQuestion(null)
+      const isNewSession = data.session_id !== sessionId
       setSessionId(data.session_id)
       sessionStorage.setItem(SESSION_STORAGE_KEY, data.session_id)
       setMessages((prev) => [
         ...prev,
         { id: `${data.query_id}-a`, role: 'assistant', text: data.answer, sources: data.sources },
       ])
+      if (isNewSession) queryClient.invalidateQueries({ queryKey: ['advisory-sessions'] })
       void question
     },
     onError: (err, question) => {
@@ -101,7 +137,7 @@ export function AdvisorPage() {
   return (
     <AppShell title="AI Tax Advisor">
       <div className="flex h-[calc(100vh-8rem)] flex-col rounded-lg bg-surface-container-lowest shadow-level-1 md:h-[calc(100vh-6rem)]">
-        <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
+        <div className="relative flex items-center justify-between border-b border-outline-variant px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined fill text-2xl text-blue">smart_toy</span>
             <div>
@@ -109,9 +145,61 @@ export function AdvisorPage() {
               <p className="text-xs text-on-surface-variant">AI Tax Advisor</p>
             </div>
           </div>
-          <button onClick={startNewChat} className="text-sm text-blue hover:underline">
-            New chat
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setHistoryOpen((v) => !v)} className="text-sm text-blue hover:underline">
+              History
+            </button>
+            <button onClick={startNewChat} className="text-sm text-blue hover:underline">
+              New chat
+            </button>
+          </div>
+
+          {historyOpen && (
+            <>
+              {/* Click-outside backdrop — also gives this a usable full-width sheet on mobile. */}
+              <div className="fixed inset-0 z-10" onClick={() => setHistoryOpen(false)} />
+              <div className="absolute right-2 top-full z-20 mt-2 max-h-96 w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-outline-variant bg-surface-container-lowest shadow-level-1 sm:w-80">
+                <p className="border-b border-outline-variant px-4 py-2 text-xs font-semibold uppercase text-on-surface-variant">
+                  Past Conversations
+                </p>
+                {sessionsQuery.isLoading && (
+                  <div className="flex justify-center p-4">
+                    <Spinner size={16} />
+                  </div>
+                )}
+                {sessionsQuery.data && sessionsQuery.data.length === 0 && (
+                  <p className="p-4 text-sm italic text-on-surface-variant">No past conversations yet.</p>
+                )}
+                {sessionsQuery.data?.map((session) => (
+                  <div
+                    key={session.session_id}
+                    className={`flex items-start gap-2 border-b border-outline-variant px-4 py-2.5 last:border-0 hover:bg-surface-container-low ${
+                      session.session_id === sessionId ? 'bg-blue/5' : ''
+                    }`}
+                  >
+                    <button onClick={() => openSession(session)} className="min-w-0 flex-1 text-left">
+                      <p className="truncate text-sm text-on-surface">{session.label}</p>
+                      <p className="text-xs text-on-surface-variant">{formatDateTime(session.last_active)}</p>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Delete this conversation? This cannot be undone.')) {
+                          deleteSessionMutation.mutate(session.session_id)
+                        }
+                      }}
+                      aria-label="Delete conversation"
+                      className="shrink-0 text-on-surface-variant hover:text-error"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </div>
+                ))}
+                <p className="border-t border-outline-variant px-4 py-2 text-xs text-on-surface-variant">
+                  Conversations are automatically deleted after 30 days.
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">

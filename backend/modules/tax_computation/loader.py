@@ -2,15 +2,22 @@
 them into the engine's ORM-independent CategorizedTransaction shape. Keeps the pure
 engine (engine.py) from knowing anything about SQLAlchemy.
 """
+from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from models.asset import Asset
 from models.category import Category
 from models.transaction import Transaction
 from models.user import User
-from modules.tax_computation.capital_allowances import CapitalAsset, allowance_for_year, total_capital_allowances
+from modules.tax_computation.capital_allowances import (
+    ASSET_CLASS_RATES,
+    CapitalAsset,
+    allowance_for_year,
+    total_capital_allowances,
+)
 from modules.tax_computation.engine import RENT_RELIEF_SLUG, CategorizedTransaction
 
 # Synthetic category for the home-office share of rent — not a real seeded Category
@@ -92,6 +99,27 @@ def load_categorized_transactions(db: Session, user: User, tax_year: str) -> lis
     return result
 
 
+def get_records_period(db: Session, user: User, tax_year: str) -> tuple[datetime | None, datetime | None]:
+    """The actual span of dates covered by this year's APPROVED records — the
+    earliest and latest transaction date on file, not just the calendar
+    Jan 1 - Dec 31 boundary used to filter them. Report headers use this so a user
+    who, say, only has records from March onward sees that reflected honestly
+    rather than implying a full-year's records exist. Returns (None, None) when
+    there are no APPROVED transactions for the year.
+    """
+    earliest, latest = (
+        db.query(func.min(Transaction.date), func.max(Transaction.date))
+        .filter(
+            Transaction.user_id == user.user_id,
+            Transaction.review_status == "APPROVED",
+            Transaction.date >= f"{tax_year}-01-01",
+            Transaction.date <= f"{tax_year}-12-31T23:59:59",
+        )
+        .one()
+    )
+    return earliest, latest
+
+
 def load_capital_allowances_for_year(db: Session, user_id: UUID, tax_year: str) -> float:
     """Capital allowances depend on an asset's whole ownership history, not just
     transactions dated within `tax_year` — an asset bought in 2024 can still be
@@ -131,5 +159,10 @@ def load_capital_allowance_items(db: Session, user_id: UUID, tax_year: str) -> l
         )
         amount = allowance_for_year(capital_asset, tax_year_int)
         if amount > 0:
-            items.append({"category_name": asset.description, "amount": amount})
+            items.append({
+                "category_name": asset.description,
+                "amount": amount,
+                "rate": ASSET_CLASS_RATES[asset.asset_class] * 100,
+                "gross_amount": asset.cost,
+            })
     return items

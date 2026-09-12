@@ -48,3 +48,13 @@ def allowance_for_year(asset: CapitalAsset, tax_year: int) -> float:
 
 def total_capital_allowances(assets: list[CapitalAsset], tax_year: int) -> float:
     return sum(allowance_for_year(asset, tax_year) for asset in assets)
+
+
+def cumulative_allowance_claimed(asset: CapitalAsset, as_of_year: int) -> float:
+    """Total allowance claimed across every year from acquisition through as_of_year
+    (inclusive). Just a sum over allowance_for_year, so disposal / full-write-down /
+    not-yet-acquired cutoffs are automatically respected without duplicating them.
+    """
+    if as_of_year < asset.acquired_year:
+        return 0.0
+    return sum(allowance_for_year(asset, year) for year in range(asset.acquired_year, as_of_year + 1))

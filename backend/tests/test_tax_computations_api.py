@@ -85,8 +85,15 @@ def test_compute_returns_itemized_breakdown_by_category(client):
     response = client.post("/tax-computations/2026/compute", headers=headers)
     body = response.json()
 
-    assert body["income_items"] == [{"category_name": "Professional Gig Fees", "amount": 2_000_000}]
-    assert body["deduction_items"] == [{"category_name": "Software & Subscriptions", "amount": 50_000}]
+    assert body["income_items"] == [
+        {"category_name": "Professional Gig Fees", "amount": 2_000_000, "gross_amount": None, "rate": None}
+    ]
+    assert body["deduction_items"] == [
+        {
+            "category_name": "Software & Subscriptions", "amount": 50_000,
+            "gross_amount": 50_000, "rate": 100.0,
+        }
+    ]
     assert body["relief_items"] == []
     assert body["capital_allowance_items"] == []
 
@@ -97,4 +104,6 @@ def test_get_returns_the_same_itemized_breakdown_computed_earlier(client):
     client.post("/tax-computations/2026/compute", headers=headers)
 
     response = client.get("/tax-computations/2026", headers=headers)
-    assert response.json()["income_items"] == [{"category_name": "Professional Gig Fees", "amount": 2_000_000}]
+    assert response.json()["income_items"] == [
+        {"category_name": "Professional Gig Fees", "amount": 2_000_000, "gross_amount": None, "rate": None}
+    ]

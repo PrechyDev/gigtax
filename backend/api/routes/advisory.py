@@ -12,7 +12,12 @@ from db.session import get_db
 from models.advisory import AIAdvisoryQuery
 from models.user import User
 from modules.advisory.rag_advisor import answer_question
-from schemas.advisory import AdvisoryHistoryItem, AdvisoryQueryRequest, AdvisoryQueryResponse
+from schemas.advisory import (
+    AdvisoryHistoryItem,
+    AdvisoryQueryRequest,
+    AdvisoryQueryResponse,
+    AdvisorySessionSummary,
+)
 
 router = APIRouter(prefix="/advisory", tags=["advisory"])
 logger = get_logger("api.advisory")
@@ -109,3 +114,45 @@ def get_history(
         )
         for turn in turns
     ]
+
+
+@router.get("/sessions", response_model=list[AdvisorySessionSummary])
+def list_advisory_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """One row per distinct chat session the user has had, most-recently-active
+    first — lets the frontend show a session list to reopen or clear an old chat.
+    Grouped in Python rather than a DB-side window function so this behaves
+    identically on Postgres (prod) and SQLite (tests).
+    """
+    turns = (
+        db.query(AIAdvisoryQuery)
+        .filter(AIAdvisoryQuery.user_id == current_user.user_id)
+        .order_by(AIAdvisoryQuery.timestamp.asc())
+        .all()
+    )
+    sessions: dict[UUID, AdvisorySessionSummary] = {}
+    for turn in turns:
+        existing = sessions.get(turn.session_id)
+        if existing is None:
+            sessions[turn.session_id] = AdvisorySessionSummary(
+                session_id=turn.session_id,
+                label=turn.query_text[:80],
+                last_active=turn.timestamp,
+            )
+        else:
+            existing.last_active = turn.timestamp
+    return sorted(sessions.values(), key=lambda s: s.last_active, reverse=True)
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_advisory_session(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.query(AIAdvisoryQuery).filter(
+        AIAdvisoryQuery.user_id == current_user.user_id, AIAdvisoryQuery.session_id == session_id
+    ).delete(synchronize_session=False)
+    db.commit()

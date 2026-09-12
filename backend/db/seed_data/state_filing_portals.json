@@ -1,23 +1,45 @@
 {
-  "_comment": "Plain, hand-editable lookup for GET /filing-guidance — no migration needed to add or correct an entry. portal_url is deliberately left null everywhere: government portal URLs change without notice and an out-of-date or wrong link is worse than no link, so the app only ever names a portal, never guesses its address. 'default' is returned for any state not listed below.",
+  "_comment": "Plain, hand-editable lookup for GET /filing-guidance — no migration needed to add or correct an entry. portal_url is populated ONLY when directly fetched and visually confirmed live/correct (see backend/db/seed_data/filing_guides/ for the full walkthrough and verification notes/dates) — never guessed from a title or a search result. Left null when a state has no confirmed portal (e.g. Ogun — multiple candidate URLs found, none confirmable as canonical/live) or isn't listed at all. Because a government portal can move without notice, re-verify a URL before trusting it long-term rather than assuming it's still correct. guide_file names the matching full walkthrough in filing_guides/, served in the API response as guide_markdown. 'default' is returned for any state not listed below.",
   "default": {
     "portal_name": null,
     "portal_url": null,
-    "note": "Filing deadlines and procedures are set by your State Internal Revenue Service (a separate body from the federal Nigeria Tax Act this app implements) — search for your state's official tax portal to file and confirm this year's deadline."
+    "note": "Filing deadlines and procedures are set by your State Internal Revenue Service (a separate body from the federal Nigeria Tax Act this app implements) — search for your state's official tax portal to file and confirm this year's deadline.",
+    "guide_file": null
   },
   "Lagos": {
     "portal_name": "LIRS eTax",
-    "portal_url": null,
-    "note": "Lagos State Internal Revenue Service's online filing portal. Search \"LIRS eTax\" to find the current official link."
+    "portal_url": "https://etax.lirs.net",
+    "note": "Lagos State Internal Revenue Service's online filing portal.",
+    "guide_file": "lagos.md"
   },
   "FCT (Abuja)": {
     "portal_name": "FCT-IRS Taxportal",
-    "portal_url": null,
-    "note": "The FCT Internal Revenue Service's online filing portal. Search \"FCT-IRS Taxportal\" to find the current official link."
+    "portal_url": "https://fcttaxportal.fctirs.gov.ng",
+    "note": "The FCT Internal Revenue Service's online filing portal. Verified live 2026-09-12 (FCT-IRS E-Tax login/session page).",
+    "guide_file": "fct_abuja.md"
   },
   "Rivers": {
     "portal_name": "RIVTAMIS",
+    "portal_url": "https://rivtamis.riversbirs.gov.ng",
+    "note": "Rivers State's online tax administration portal. This address resolves to a bare redirect page with no RIVTAMIS branding visible — likely correct (matches the name used in state guidance) but not fully visually confirmed, so double-check you land on a RIVTAMIS-branded page after the redirect.",
+    "guide_file": "rivers.md"
+  },
+  "Oyo": {
+    "portal_name": "OYSBIR Self Service",
+    "portal_url": "https://selfservice.oyostatebir.com",
+    "note": "Oyo State Board of Internal Revenue's self-service portal (issues your S-TIN). Verified live 2026-09-12 (S-TIN registration, filing, payment, and TCC verification all present). A paper registration route also exists if you'd rather register in person.",
+    "guide_file": "oyo.md"
+  },
+  "Osun": {
+    "portal_name": "OIRS",
+    "portal_url": "https://irs.os.gov.ng",
+    "note": "Osun Internal Revenue Service. Verified live 2026-09-12. Direct Assessment returns are filed via a downloadable Excel template (irs.os.gov.ng/downloads) submitted online or by email.",
+    "guide_file": "osun.md"
+  },
+  "Ogun": {
+    "portal_name": "OGIRS",
     "portal_url": null,
-    "note": "Rivers State's online tax administration portal. Search \"RIVTAMIS\" to find the current official link."
+    "note": "Ogun State Internal Revenue Service. Multiple OGIRS web addresses are in circulation (ogunstaterevenue.com, ogirs.ogunstate.gov.ng, portal.ogetax.ogunstate.gov.ng); the last of these loads but shows signs of being stale (dead \"#\" links, a news section last updated 2021) rather than the current live system. No canonical portal could be confirmed as of 2026-09-12 — search \"OGIRS Ogun State\" and verify you're on the current official site before registering or filing.",
+    "guide_file": "ogun.md"
   }
 }

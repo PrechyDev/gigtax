@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
 import { getFilingGuidance } from '../api/filingGuidance'
 import { useAuth } from '../context/AuthContext'
@@ -186,9 +187,17 @@ function FilingGuidancePanel({
   guidance,
   isLoading,
 }: {
-  guidance?: { state: string | null; portal_name: string | null; portal_url: string | null; note: string }
+  guidance?: {
+    state: string | null
+    portal_name: string | null
+    portal_url: string | null
+    note: string
+    guide_markdown: string | null
+  }
   isLoading: boolean
 }) {
+  const [guideOpen, setGuideOpen] = useState(false)
+
   if (isLoading) return null
   if (!guidance) return null
 
@@ -201,7 +210,34 @@ function FilingGuidancePanel({
       {guidance.portal_name && (
         <p className="mb-1 text-sm font-medium text-on-surface">{guidance.portal_name}</p>
       )}
-      <p className="text-sm text-on-surface-variant">{guidance.note}</p>
+      <p className="mb-3 text-sm text-on-surface-variant">{guidance.note}</p>
+      {guidance.portal_url && (
+        <a
+          href={guidance.portal_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-dark"
+        >
+          Go to {guidance.portal_name ?? 'portal'}
+          <span className="material-symbols-outlined text-base">open_in_new</span>
+        </a>
+      )}
+      {guidance.guide_markdown && (
+        <div className="mt-4 border-t border-outline-variant pt-3">
+          <button
+            onClick={() => setGuideOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-sm font-semibold text-blue hover:underline"
+          >
+            {guideOpen ? 'Hide full filing walkthrough' : 'Show full filing walkthrough'}
+            <span className="material-symbols-outlined text-base">{guideOpen ? 'expand_less' : 'expand_more'}</span>
+          </button>
+          {guideOpen && (
+            <div className="markdown-content mt-3 max-h-[32rem] overflow-y-auto text-sm">
+              <ReactMarkdown>{guidance.guide_markdown}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -257,8 +293,15 @@ function BreakdownRow({
         {items.length > 0 ? (
           <ul className="space-y-1.5 text-sm text-on-surface-variant">
             {items.map((item) => (
-              <li key={item.category_name} className="flex items-center justify-between">
-                <span>{item.category_name}</span>
+              <li key={item.category_name} className="flex items-center justify-between gap-3">
+                <span>
+                  {item.category_name}
+                  {item.rate != null && item.rate < 100 && (
+                    <span className="ml-2 rounded bg-blue/10 px-1.5 py-0.5 text-xs font-medium text-blue">
+                      {item.rate.toFixed(0)}% of {formatNaira(item.gross_amount ?? item.amount)}
+                    </span>
+                  )}
+                </span>
                 <span className="tabular-nums">{formatNaira(item.amount)}</span>
               </li>
             ))}

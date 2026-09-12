@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "postgrespassword"
     POSTGRES_DB: str = "gigtax"
     POSTGRES_PORT: str = "5432"
+    # Full connection string (e.g. Neon's, which already includes ?sslmode=require) —
+    # takes precedence over the discrete POSTGRES_* fields above when set. Local dev
+    # keeps using the discrete fields (docker-compose Postgres needs no SSL); a
+    # deployed backend sets this instead of the five fields above. See
+    # docs/DEPLOYMENT.md.
+    DATABASE_URL: str | None = None
 
     # Auth
     JWT_SECRET_KEY: str = "dev-only-insecure-secret-change-me"
@@ -38,6 +44,8 @@ class Settings(BaseSettings):
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)

@@ -1,6 +1,8 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from api.deps import get_current_user
@@ -10,7 +12,13 @@ from models.category import Category
 from models.transaction import ExpenseRecord, IncomeRecord, Transaction
 from models.user import User
 from modules.ingestion.asset_sync import sync_asset_for_transaction
-from schemas.transaction import ManualTransactionCreate, TransactionOut, TransactionReviewUpdate
+from schemas.transaction import (
+    BulkTransactionDelete,
+    BulkTransactionReview,
+    ManualTransactionCreate,
+    TransactionOut,
+    TransactionReviewUpdate,
+)
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -65,6 +73,10 @@ def list_transactions(
     review_status: str | None = Query(default=None),
     tax_year: str | None = Query(default=None),
     transaction_type: str | None = Query(default=None, description="'income' or 'expense'"),
+    category_slug: str | None = Query(
+        default=None,
+        description="Filters to transactions currently resolved to this category (user_category_id if set, else ai_category_id) — e.g. 'uncategorized' to find AI-flagged personal/unclear transactions needing a decision.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -83,7 +95,86 @@ def list_transactions(
         query = query.filter(
             Transaction.date >= f"{tax_year}-01-01", Transaction.date <= f"{tax_year}-12-31"
         )
+    if category_slug:
+        category = db.query(Category).filter(Category.developer_slug == category_slug).first()
+        category_id = category.category_id if category else None
+        # An unknown slug should return zero rows, not "no filter" — compare against a
+        # sentinel that can never match a real category_id rather than skipping the filter.
+        query = query.filter(
+            func.coalesce(Transaction.user_category_id, Transaction.ai_category_id) == category_id
+        )
     return query.order_by(Transaction.date.desc()).offset(offset).limit(limit).all()
+
+
+def _apply_review_status(transaction: Transaction, review_status: str) -> None:
+    """Setting REJECTED is a *discard*, not a delete — it stamps discarded_at so the
+    scheduled cleanup job (core/scheduled_cleanup.py) knows when the 30-day recovery
+    window started. Moving away from REJECTED (restoring to PENDING/APPROVED) clears
+    it again, so a restored transaction is no longer on the purge clock.
+    """
+    transaction.review_status = review_status
+    transaction.discarded_at = datetime.now(timezone.utc) if review_status == "REJECTED" else None
+
+
+def _hard_delete_transaction(db: Session, transaction: Transaction) -> None:
+    """Permanent delete — used by the single/bulk DELETE endpoints (reachable from the
+    Discarded tab's "delete now" for a user who wants to skip the 30-day wait) and by
+    the scheduled purge job once that window has passed.
+    """
+    # A capital-item purchase has a linked Asset row (see modules/ingestion/asset_sync.py) —
+    # remove it first, or the DB's foreign key rejects the delete outright.
+    linked_asset = db.query(Asset).filter(Asset.transaction_id == transaction.transaction_id).first()
+    if linked_asset is not None:
+        db.delete(linked_asset)
+    db.delete(transaction)
+
+
+@router.patch("/bulk-review", response_model=list[TransactionOut])
+def bulk_review_transactions(
+    payload: BulkTransactionReview,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk approve/discard/restore in one round trip and one commit — the ids-only
+    payload keeps this a single request regardless of selection size, unlike looping
+    the single-item PATCH below. Ids that don't exist or aren't this user's are
+    silently skipped rather than failing the whole batch.
+
+    Registered ahead of the "/{transaction_id}" PATCH route below — FastAPI/Starlette
+    matches routes in registration order, so a literal path segment like this one must
+    come before a parameterized "/{transaction_id}" route or requests here would be
+    swallowed by that route instead (with "bulk-review" failing UUID validation).
+    """
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.transaction_id.in_(payload.transaction_ids), Transaction.user_id == current_user.user_id)
+        .all()
+    )
+    for transaction in transactions:
+        _apply_review_status(transaction, payload.review_status)
+    db.commit()
+    for transaction in transactions:
+        db.refresh(transaction)
+    return transactions
+
+
+@router.delete("/bulk", status_code=status.HTTP_204_NO_CONTENT)
+def bulk_delete_transactions(
+    payload: BulkTransactionDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Same registration-order note as bulk_review_transactions above applies here —
+    must come before the "/{transaction_id}" DELETE route.
+    """
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.transaction_id.in_(payload.transaction_ids), Transaction.user_id == current_user.user_id)
+        .all()
+    )
+    for transaction in transactions:
+        _hard_delete_transaction(db, transaction)
+    db.commit()
 
 
 @router.patch("/{transaction_id}", response_model=TransactionOut)
@@ -112,7 +203,7 @@ def review_transaction(
         sync_asset_for_transaction(db, transaction, category)
 
     if payload.review_status is not None:
-        transaction.review_status = payload.review_status
+        _apply_review_status(transaction, payload.review_status)
 
     if payload.description is not None:
         transaction.description = payload.description
@@ -136,11 +227,5 @@ def delete_transaction(
     if transaction is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
 
-    # A capital-item purchase has a linked Asset row (see modules/ingestion/asset_sync.py) —
-    # remove it first, or the DB's foreign key rejects the delete outright.
-    linked_asset = db.query(Asset).filter(Asset.transaction_id == transaction_id).first()
-    if linked_asset is not None:
-        db.delete(linked_asset)
-
-    db.delete(transaction)
+    _hard_delete_transaction(db, transaction)
     db.commit()

@@ -12,6 +12,12 @@ class BandBreakdownItem(BaseModel):
 class CategoryAmountItem(BaseModel):
     category_name: str
     amount: float
+    # Only populated for deduction_items and capital_allowance_items — the
+    # pre-deduction amount and the effective rate applied to reach `amount`
+    # (e.g. 100% for a normal expense, a user's home-office percentage for
+    # utilities, or a First Schedule capital allowance class rate).
+    gross_amount: float | None = None
+    rate: float | None = None
 
 
 class TaxComputationOut(BaseModel):

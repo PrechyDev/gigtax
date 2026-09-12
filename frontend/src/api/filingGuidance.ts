@@ -5,6 +5,7 @@ export interface FilingGuidance {
   portal_name: string | null
   portal_url: string | null
   note: string
+  guide_markdown: string | null
 }
 
 export function getFilingGuidance(state?: string) {

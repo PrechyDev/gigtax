@@ -10,6 +10,8 @@ export interface Asset {
   disposed: boolean
   disposed_date: string | null
   current_year_allowance: number
+  cumulative_allowance_claimed: number
+  remaining_value: number
 }
 
 export function listAssets(taxYear?: number) {

@@ -4,6 +4,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { listCategories, type Category } from '../api/categories'
 import { groupCategoriesForType } from '../lib/categoryLabels'
 import {
+  bulkDeleteTransactions,
+  bulkReviewTransactions,
   deleteTransaction,
   listTransactions,
   reviewTransaction,
@@ -26,21 +28,38 @@ import { ApiError } from '../lib/apiClient'
 import { formatDate, formatNaira } from '../lib/formatters'
 
 const LOW_CONFIDENCE_THRESHOLD = 0.6
+// The AI pipeline force-categorizes personal/non-business transactions into this
+// slug (see backend/modules/ai_categorization/categorization.py, instructions #5/#6)
+// rather than omitting them — this filters the Ledger down to exactly those, so a
+// user can skim and either recategorize (real business, rescued) or discard (really
+// personal) without them being buried among ordinary low-confidence pending items.
+const NEEDS_ATTENTION_CATEGORY_SLUG = 'uncategorized'
+const DISCARD_RETENTION_DAYS = 30
 
-type LedgerTab = 'all' | 'pending' | 'income' | 'expense'
+type LedgerTab = 'all' | 'pending' | 'needs_attention' | 'income' | 'expense' | 'discarded'
 
 const LEDGER_TABS: { id: LedgerTab; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'pending', label: 'Pending Review' },
+  { id: 'needs_attention', label: 'Needs Attention' },
   { id: 'income', label: 'Income' },
   { id: 'expense', label: 'Expenses' },
+  { id: 'discarded', label: 'Discarded' },
 ]
 
 function filtersForTab(tab: LedgerTab): TransactionFilters {
   if (tab === 'pending') return { review_status: 'PENDING' }
+  if (tab === 'needs_attention') return { review_status: 'PENDING', category_slug: NEEDS_ATTENTION_CATEGORY_SLUG }
   if (tab === 'income') return { transaction_type: 'income' }
   if (tab === 'expense') return { transaction_type: 'expense' }
+  if (tab === 'discarded') return { review_status: 'REJECTED' }
   return {}
+}
+
+function autoDeleteDate(discardedAt: string): string {
+  const date = new Date(discardedAt)
+  date.setDate(date.getDate() + DISCARD_RETENTION_DAYS)
+  return formatDate(date.toISOString())
 }
 
 const PAGE_SIZE = 50
@@ -51,7 +70,6 @@ function isLedgerTab(value: string | null): value is LedgerTab {
 }
 
 export function LedgerPage() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
@@ -61,6 +79,7 @@ export function LedgerPage() {
     const fromUrl = searchParams.get('tab')
     return isLedgerTab(fromUrl) ? fromUrl : 'all'
   })
+  const isDiscardedTab = tab === 'discarded'
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -74,54 +93,67 @@ export function LedgerPage() {
   const rows = transactionsQuery.data?.pages.flat() ?? []
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
 
+  function invalidateAfterChange() {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    queryClient.invalidateQueries({ queryKey: ['assets'] })
+    setSelectedIds(new Set())
+  }
+
   const reviewMutation = useMutation({
     mutationFn: ({ id, ...input }: { id: string } & TransactionReviewInput) => reviewTransaction(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-    },
+    onSuccess: invalidateAfterChange,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not update this transaction.'),
   })
 
   const bulkApproveMutation = useMutation({
-    mutationFn: (ids: string[]) => Promise.all(ids.map((id) => reviewTransaction(id, { review_status: 'APPROVED' }))),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      setSelectedIds(new Set())
-    },
+    mutationFn: (ids: string[]) => bulkReviewTransactions(ids, 'APPROVED'),
+    onSuccess: invalidateAfterChange,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not approve the selected transactions.'),
   })
 
-  const bulkDeleteMutation = useMutation({
-    mutationFn: (ids: string[]) => Promise.all(ids.map((id) => deleteTransaction(id))),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-      setSelectedIds(new Set())
-    },
+  const bulkDiscardMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkReviewTransactions(ids, 'REJECTED'),
+    onSuccess: invalidateAfterChange,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not discard the selected transactions.'),
+  })
+
+  const bulkRestoreMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkReviewTransactions(ids, 'PENDING'),
+    onSuccess: invalidateAfterChange,
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not restore the selected transactions.'),
+  })
+
+  const bulkHardDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteTransactions(ids),
+    onSuccess: invalidateAfterChange,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not delete the selected transactions.'),
   })
 
   const deleteOneMutation = useMutation({
     mutationFn: (id: string) => deleteTransaction(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-    },
+    onSuccess: invalidateAfterChange,
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not delete this transaction.'),
   })
 
   function handleDeleteOne(transaction: Transaction) {
     if (
       window.confirm(
-        `Delete "${transaction.description}"? Any linked capital asset will be removed too. This cannot be undone.`,
+        `Permanently delete "${transaction.description}"? Any linked capital asset will be removed too. This cannot be undone.`,
       )
     ) {
       deleteOneMutation.mutate(transaction.transaction_id)
+    }
+  }
+
+  function handleBulkHardDelete() {
+    const ids = Array.from(selectedIds)
+    if (
+      window.confirm(
+        `Permanently delete ${ids.length} transaction(s)? Any linked capital assets will be removed too. This cannot be undone.`,
+      )
+    ) {
+      bulkHardDeleteMutation.mutate(ids)
     }
   }
 
@@ -145,22 +177,17 @@ export function LedgerPage() {
     setSelectedIds(allSelected ? new Set() : new Set(rows.map((t) => t.transaction_id)))
   }
 
-  function handleBulkDelete() {
-    const ids = Array.from(selectedIds)
-    if (
-      window.confirm(
-        `Delete ${ids.length} transaction(s)? Any linked capital assets will be removed too. This cannot be undone.`,
-      )
-    ) {
-      bulkDeleteMutation.mutate(ids)
-    }
-  }
+  const isBulkActionPending =
+    bulkApproveMutation.isPending ||
+    bulkDiscardMutation.isPending ||
+    bulkRestoreMutation.isPending ||
+    bulkHardDeleteMutation.isPending
 
   return (
     <AppShell title="Ledger Review">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-on-surface-variant">Review and confirm AI-categorized transactions.</p>
-        <div className="flex gap-1 rounded-lg bg-surface-container-low p-1">
+        <div className="flex flex-wrap gap-1 rounded-lg bg-surface-container-low p-1">
           {LEDGER_TABS.map((t) => (
             <button
               key={t.id}
@@ -180,6 +207,19 @@ export function LedgerPage() {
         </div>
       </div>
 
+      {tab === 'needs_attention' && (
+        <p className="mb-4 text-sm text-on-surface-variant">
+          These were flagged as personal or unclear and left out of your tax calculation. Pick a real category to
+          bring one back into your business records, or discard it if it really is personal.
+        </p>
+      )}
+      {isDiscardedTab && (
+        <p className="mb-4 text-sm text-on-surface-variant">
+          Discarded transactions stay here for {DISCARD_RETENTION_DAYS} days before they're permanently deleted —
+          restore one if you discarded it by mistake, or delete it now to skip the wait.
+        </p>
+      )}
+
       {error && (
         <div className="mb-4">
           <ErrorBanner message={error} onDismiss={() => setError(null)} />
@@ -192,24 +232,47 @@ export function LedgerPage() {
       )}
 
       {selectedIds.size > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg bg-navy px-4 py-3 text-white shadow-level-1">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-navy px-4 py-3 text-white shadow-level-1">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
-          <button
-            onClick={() => bulkApproveMutation.mutate(Array.from(selectedIds))}
-            disabled={bulkApproveMutation.isPending || bulkDeleteMutation.isPending}
-            className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50"
-          >
-            {bulkApproveMutation.isPending && <Spinner size={14} />}
-            Approve Selected
-          </button>
-          <button
-            onClick={handleBulkDelete}
-            disabled={bulkApproveMutation.isPending || bulkDeleteMutation.isPending}
-            className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-error hover:bg-white/20 disabled:opacity-50"
-          >
-            {bulkDeleteMutation.isPending && <Spinner size={14} />}
-            Delete Selected
-          </button>
+          {isDiscardedTab ? (
+            <>
+              <button
+                onClick={() => bulkRestoreMutation.mutate(Array.from(selectedIds))}
+                disabled={isBulkActionPending}
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50"
+              >
+                {bulkRestoreMutation.isPending && <Spinner size={14} />}
+                Restore Selected
+              </button>
+              <button
+                onClick={handleBulkHardDelete}
+                disabled={isBulkActionPending}
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-error hover:bg-white/20 disabled:opacity-50"
+              >
+                {bulkHardDeleteMutation.isPending && <Spinner size={14} />}
+                Delete Permanently
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => bulkApproveMutation.mutate(Array.from(selectedIds))}
+                disabled={isBulkActionPending}
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50"
+              >
+                {bulkApproveMutation.isPending && <Spinner size={14} />}
+                Approve Selected
+              </button>
+              <button
+                onClick={() => bulkDiscardMutation.mutate(Array.from(selectedIds))}
+                disabled={isBulkActionPending}
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-error hover:bg-white/20 disabled:opacity-50"
+              >
+                {bulkDiscardMutation.isPending && <Spinner size={14} />}
+                Discard Selected
+              </button>
+            </>
+          )}
           <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-sm text-white/70 hover:text-white">
             Cancel
           </button>
@@ -223,7 +286,11 @@ export function LedgerPage() {
       {!transactionsQuery.isLoading && rows.length === 0 && (
         <EmptyState
           icon="receipt_long"
-          message="No transactions yet — upload a statement or add one manually."
+          message={
+            isDiscardedTab
+              ? 'Nothing discarded — items you discard show up here for 30 days before being deleted.'
+              : 'No transactions yet — upload a statement or add one manually.'
+          }
           action={{ label: 'Go to Ingestion', onClick: () => navigate('/ingestion') }}
         />
       )}
@@ -252,12 +319,12 @@ export function LedgerPage() {
                   transaction={transaction}
                   category={categoryFor(transaction)}
                   categories={categoriesQuery.data ?? []}
-                  homeOfficeEnabled={!!user?.has_home_office}
+                  isDiscardedTab={isDiscardedTab}
                   isSelected={selectedIds.has(transaction.transaction_id)}
                   onToggleSelect={() => toggleOne(transaction.transaction_id)}
                   onReview={(input) => reviewMutation.mutate({ id: transaction.transaction_id, ...input })}
                   onRuleCreated={() => setSuccess('Rule created — future matching transactions will use it automatically.')}
-                  onDelete={() => handleDeleteOne(transaction)}
+                  onHardDelete={() => handleDeleteOne(transaction)}
                   isSaving={reviewMutation.isPending}
                   isDeleting={deleteOneMutation.isPending}
                 />
@@ -287,23 +354,24 @@ function TransactionRow({
   transaction,
   category,
   categories,
+  isDiscardedTab,
   isSelected,
   onToggleSelect,
   onReview,
   onRuleCreated,
-  onDelete,
+  onHardDelete,
   isSaving,
   isDeleting,
 }: {
   transaction: Transaction
   category?: { developer_slug: string; category_name: string }
   categories: Category[]
-  homeOfficeEnabled: boolean
+  isDiscardedTab: boolean
   isSelected: boolean
   onToggleSelect: () => void
   onReview: (input: TransactionReviewInput) => void
   onRuleCreated: () => void
-  onDelete: () => void
+  onHardDelete: () => void
   isSaving: boolean
   isDeleting: boolean
 }) {
@@ -315,6 +383,14 @@ function TransactionRow({
   )
   const isLowConfidence =
     transaction.confidence_score !== null && transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
+  // "uncategorized" isn't a selectable option in groupCategoriesForType (it's the AI's
+  // personal/unclear fallback, not a real business category — see NEEDS_ATTENTION_CATEGORY_SLUG
+  // above), so treating it as "a category is selected" would pre-fill the dropdown with
+  // whatever option happens to render first, silently misrepresenting the transaction as
+  // already categorized. Every row in the Needs Attention tab hits this, so it must resolve
+  // to "nothing selected" instead.
+  const isUncategorized = category?.developer_slug === NEEDS_ATTENTION_CATEGORY_SLUG
+  const selectableCategory = category && !isUncategorized ? category : undefined
 
   function saveDescription() {
     setIsEditingDescription(false)
@@ -376,7 +452,7 @@ function TransactionRow({
         </td>
         <td className="px-4 py-3">
           <select
-            defaultValue={category?.developer_slug ?? ''}
+            defaultValue={selectableCategory?.developer_slug ?? ''}
             onChange={(e) => onReview({ category_slug: e.target.value })}
             className={`h-9 rounded-md border bg-white px-2 text-xs ${
               isLowConfidence ? 'border-error text-error' : 'border-outline-variant'
@@ -402,33 +478,50 @@ function TransactionRow({
             <StatusPill label={transaction.review_status} tone={reviewStatusTone(transaction.review_status)} />
             {isSaving && <Spinner size={14} />}
           </div>
+          {isDiscardedTab && transaction.discarded_at && (
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Discarded {formatDate(transaction.discarded_at)} — auto-deletes {autoDeleteDate(transaction.discarded_at)}
+            </p>
+          )}
           <div className="mt-1 flex items-center gap-2 text-xs">
-            {transaction.review_status !== 'APPROVED' && (
+            {isDiscardedTab ? (
               <button
                 disabled={isSaving}
-                onClick={() => onReview({ review_status: 'APPROVED' })}
+                onClick={() => onReview({ review_status: 'PENDING' })}
                 className="text-emerald-dark hover:underline disabled:opacity-50"
               >
-                Approve
+                Restore
               </button>
-            )}
-            {transaction.review_status !== 'REJECTED' && (
-              <button
-                disabled={isSaving}
-                onClick={() => onReview({ review_status: 'REJECTED' })}
-                className="text-on-surface-variant hover:underline disabled:opacity-50"
-              >
-                Reject
-              </button>
+            ) : (
+              <>
+                {transaction.review_status !== 'APPROVED' && (
+                  <button
+                    disabled={isSaving}
+                    onClick={() => onReview({ review_status: 'APPROVED' })}
+                    className="text-emerald-dark hover:underline disabled:opacity-50"
+                  >
+                    Approve
+                  </button>
+                )}
+                {transaction.review_status !== 'REJECTED' && (
+                  <button
+                    disabled={isSaving}
+                    onClick={() => onReview({ review_status: 'REJECTED' })}
+                    className="text-on-surface-variant hover:underline disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                )}
+              </>
             )}
           </div>
-          {category && (
+          {selectableCategory && !isDiscardedTab && (
             <button
               className="mt-1 text-xs text-blue hover:underline"
               onClick={() =>
                 setRuleTarget({
-                  categorySlug: category.developer_slug,
-                  categoryName: category.category_name,
+                  categorySlug: selectableCategory.developer_slug,
+                  categoryName: selectableCategory.category_name,
                   defaultKeyword: transaction.description.split(' ')[0],
                 })
               }
@@ -438,24 +531,22 @@ function TransactionRow({
           )}
         </td>
         <td className="px-4 py-3">
-          {transaction.type === 'expense' ? (
-            <button className="text-blue hover:underline" onClick={() => setReceiptsOpen((v) => !v)}>
-              Receipts
-            </button>
-          ) : (
-            <span className="text-on-surface-variant">N/A</span>
-          )}
+          <button className="text-blue hover:underline" onClick={() => setReceiptsOpen((v) => !v)}>
+            Receipts
+          </button>
         </td>
         <td className="px-4 py-3">
-          <button
-            onClick={onDelete}
-            disabled={isDeleting}
-            aria-label="Delete transaction"
-            title="Delete"
-            className="text-on-surface-variant hover:text-error disabled:opacity-50"
-          >
-            {isDeleting ? <Spinner size={16} /> : <span className="material-symbols-outlined text-lg">delete</span>}
-          </button>
+          {isDiscardedTab && (
+            <button
+              onClick={onHardDelete}
+              disabled={isDeleting}
+              aria-label="Delete permanently"
+              title="Delete permanently"
+              className="text-on-surface-variant hover:text-error disabled:opacity-50"
+            >
+              {isDeleting ? <Spinner size={16} /> : <span className="material-symbols-outlined text-lg">delete_forever</span>}
+            </button>
+          )}
         </td>
       </tr>
       {receiptsOpen && (
@@ -506,7 +597,12 @@ function CreateRuleModal({
   return (
     <Modal title="Create a Rule" onClose={onClose}>
       <p className="mb-4 text-sm text-on-surface-variant">
-        Transactions matching this keyword will always be categorized as "{target.categoryName}".
+        Transactions matching this keyword will always be categorized as "{target.categoryName}". For a freeform
+        rule (e.g. marking a keyword as personal/non-business), use{' '}
+        <Link to="/settings" className="font-semibold text-blue hover:underline" onClick={onClose}>
+          Settings → Custom Rules
+        </Link>
+        .
       </p>
       {error && (
         <div className="mb-4">
@@ -562,6 +658,7 @@ function ReceiptsPanel({ transactionId }: { transactionId: string }) {
 
   return (
     <div>
+      <p className="mb-2 text-xs italic text-on-surface-variant">Recommended, not required — attach one if you have it.</p>
       {error && (
         <div className="mb-2">
           <ErrorBanner message={error} onDismiss={() => setError(null)} />

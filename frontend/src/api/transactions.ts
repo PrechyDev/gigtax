@@ -14,6 +14,7 @@ export interface Transaction {
   review_status: 'PENDING' | 'APPROVED' | 'REJECTED'
   tax_treatment: string | null
   source: string
+  discarded_at: string | null
 }
 
 export interface ManualTransactionInput {
@@ -37,6 +38,7 @@ export interface TransactionFilters {
   review_status?: string
   tax_year?: string
   transaction_type?: string
+  category_slug?: string
   limit?: number
   offset?: number
   [key: string]: string | number | undefined
@@ -56,4 +58,25 @@ export function reviewTransaction(transactionId: string, input: TransactionRevie
 
 export function deleteTransaction(transactionId: string) {
   return apiFetch<void>(`/transactions/${transactionId}`, { method: 'DELETE' })
+}
+
+/** One request instead of N — see backend/api/routes/transactions.py's
+ * bulk_review_transactions. Setting REJECTED here is a discard (recoverable for 30
+ * days from the Discarded tab), not a permanent delete.
+ */
+export function bulkReviewTransactions(transactionIds: string[], reviewStatus: 'APPROVED' | 'REJECTED' | 'PENDING') {
+  return apiFetch<Transaction[]>('/transactions/bulk-review', {
+    method: 'PATCH',
+    body: { transaction_ids: transactionIds, review_status: reviewStatus },
+  })
+}
+
+/** Permanent, immediate delete for multiple transactions at once — only reachable
+ * from the Discarded tab's "delete now" action, skipping the 30-day recovery window.
+ */
+export function bulkDeleteTransactions(transactionIds: string[]) {
+  return apiFetch<void>('/transactions/bulk', {
+    method: 'DELETE',
+    body: { transaction_ids: transactionIds },
+  })
 }

@@ -9,6 +9,7 @@ from models.user import User
 from modules.reporting.generator import build_report_pdf
 from modules.tax_computation.engine import compute_tax
 from modules.tax_computation.loader import (
+    get_records_period,
     load_capital_allowance_items,
     load_capital_allowances_for_year,
     load_categorized_transactions,
@@ -55,7 +56,18 @@ def download_report(
     capital_allowance_items = load_capital_allowance_items(db, current_user.user_id, tax_year)
     result = compute_tax(transactions, capital_allowances_this_year=capital_allowances)
     items = build_itemized_breakdown(db, transactions, capital_allowance_items)
-    pdf_bytes = build_report_pdf(current_user.name, tax_year, result, items)
+    period_start, period_end = get_records_period(db, current_user, tax_year)
+    pdf_bytes = build_report_pdf(
+        current_user.name,
+        tax_year,
+        result,
+        items,
+        tin=current_user.tin,
+        state_residence=current_user.state_residence,
+        occupation_type=current_user.occupation_type,
+        period_start=period_start,
+        period_end=period_end,
+    )
 
     if current_user.google_drive_connected:
         try:

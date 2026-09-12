@@ -22,6 +22,7 @@ def create_custom_rule(
         user_id=current_user.user_id,
         keyword_pattern=payload.keyword_pattern,
         assigned_category=payload.assigned_category,
+        rule_text=payload.rule_text,
     )
     db.add(rule)
     db.commit()

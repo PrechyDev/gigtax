@@ -1,9 +1,14 @@
+import os
+from datetime import datetime, timezone
+
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core.config import settings
 from core.logger import get_logger
+from core.scheduled_cleanup import run_daily_cleanup
 from api.routes import (
     advisory,
     assets,
@@ -66,6 +71,45 @@ app.include_router(advisory.router)
 app.include_router(assets.router)
 app.include_router(categories.router)
 app.include_router(filing_guidance.router)
+
+# Daily housekeeping (purge discarded transactions / old chat sessions past their
+# retention window — see core/scheduled_cleanup.py). A single in-process
+# BackgroundScheduler is the right fit for a single Render free-tier dyno; no
+# Redis/Celery needed for a once-a-day job. `next_run_time=` schedules an
+# immediate first run too, so a long-running dev/demo instance doesn't wait a full
+# day before its first cleanup.
+scheduler = BackgroundScheduler(timezone="UTC")
+
+
+@app.on_event("startup")
+def _start_scheduler():
+    # Guard against pytest: the test suite builds this same `app` inside a
+    # `with TestClient(app) as client` block (see tests/conftest.py), which fires
+    # startup events for real. Without this guard, every test using that fixture
+    # would spin up a real scheduler thread whose immediate `next_run_time` job opens
+    # a SessionLocal() against the real configured DATABASE_URI (not the test's
+    # in-memory SQLite engine) — a stray real DB connection attempt on every test run.
+    if os.environ.get("PYTEST_CURRENT_TEST") is not None:
+        return
+    scheduler.add_job(
+        run_daily_cleanup,
+        "interval",
+        hours=24,
+        next_run_time=datetime.now(timezone.utc),
+        id="daily_cleanup",
+        replace_existing=True,
+    )
+    scheduler.start()
+
+
+@app.on_event("shutdown")
+def _stop_scheduler():
+    # Mirrors the pytest guard in _start_scheduler above — shutting down a scheduler
+    # that was never started raises SchedulerNotRunningError, which every test using
+    # the `client` fixture would otherwise hit on teardown.
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+
 
 @app.get("/")
 def read_root():

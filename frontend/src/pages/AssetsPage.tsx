@@ -71,6 +71,8 @@ export function AssetsPage() {
                     <th className="px-4 py-3 tabular-nums">Purchase Value</th>
                     <th className="px-4 py-3">Rate</th>
                     <th className="px-4 py-3 tabular-nums">Current Year Ded.</th>
+                    <th className="px-4 py-3 tabular-nums">Claimed to Date</th>
+                    <th className="px-4 py-3 tabular-nums">Remaining to Deduct</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3" />
                   </tr>
@@ -94,6 +96,8 @@ export function AssetsPage() {
                         <td className="px-4 py-3 tabular-nums text-emerald-dark">
                           {formatNaira(asset.current_year_allowance)}
                         </td>
+                        <td className="px-4 py-3 tabular-nums">{formatNaira(asset.cumulative_allowance_claimed)}</td>
+                        <td className="px-4 py-3 tabular-nums">{formatNaira(asset.remaining_value)}</td>
                         <td className="px-4 py-3">
                           <StatusPill
                             label={asset.disposed ? 'Disposed' : isFullyDepreciated ? 'Fully Depreciated' : 'Active'}

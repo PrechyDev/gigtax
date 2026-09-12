@@ -24,7 +24,10 @@ def build_custom_rules_text(db: Session, user_id) -> str:
     )
     if not rules:
         return "None."
-    return "\n".join(
-        f"{i}. If a transaction matches '{rule.keyword_pattern}', classify it as '{rule.assigned_category}'."
-        for i, rule in enumerate(rules, start=1)
-    )
+
+    def _render(rule: CustomRule) -> str:
+        if rule.assigned_category:
+            return f"If a transaction matches '{rule.keyword_pattern}', classify it as '{rule.assigned_category}'."
+        return f"Regarding transactions matching '{rule.keyword_pattern}': {rule.rule_text}"
+
+    return "\n".join(f"{i}. {_render(rule)}" for i, rule in enumerate(rules, start=1))

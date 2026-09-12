@@ -51,5 +51,22 @@ class TransactionOut(BaseModel):
     review_status: str
     tax_treatment: str | None
     source: str
+    discarded_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class BulkTransactionReview(BaseModel):
+    transaction_ids: list[UUID] = Field(min_length=1, max_length=500)
+    review_status: str
+
+    @field_validator("review_status")
+    @classmethod
+    def _validate_review_status(cls, value: str) -> str:
+        if value.upper() not in ("APPROVED", "REJECTED", "PENDING"):
+            raise ValueError("review_status must be one of APPROVED, REJECTED, PENDING")
+        return value.upper()
+
+
+class BulkTransactionDelete(BaseModel):
+    transaction_ids: list[UUID] = Field(min_length=1, max_length=500)

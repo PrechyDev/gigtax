@@ -9,6 +9,12 @@ export interface BandBreakdownItem {
 export interface CategoryAmountItem {
   category_name: string
   amount: number
+  // Only populated for deduction_items and capital_allowance_items: the
+  // pre-deduction amount and the effective rate applied (e.g. 100% for a normal
+  // expense, a user's home-office percentage for utilities, or a capital
+  // allowance class rate).
+  gross_amount?: number | null
+  rate?: number | null
 }
 
 export interface TaxComputation {

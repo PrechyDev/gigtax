@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { updateMe } from '../api/auth'
 import { getGoogleDriveConnectUrl } from '../api/drive'
+import { listCategories, type Category } from '../api/categories'
 import { createCustomRule, deleteCustomRule, listCustomRules } from '../api/customRules'
+import { classificationLabel } from '../lib/categoryLabels'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
@@ -258,13 +260,24 @@ function IntegrationsTab({
   )
 }
 
+type RuleMode = 'category' | 'freeform'
+
 function RulesTab() {
   const queryClient = useQueryClient()
+  const [mode, setMode] = useState<RuleMode>('category')
   const [pattern, setPattern] = useState('')
   const [category, setCategory] = useState('')
+  const [ruleText, setRuleText] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const rulesQuery = useQuery({ queryKey: ['custom-rules'], queryFn: listCustomRules })
+  const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
+
+  const groupedCategories = (categoriesQuery.data ?? []).reduce<Record<string, Category[]>>((groups, c) => {
+    const label = classificationLabel(c.classification)
+    groups[label] = [...(groups[label] ?? []), c]
+    return groups
+  }, {})
 
   const createMutation = useMutation({
     mutationFn: createCustomRule,
@@ -272,6 +285,7 @@ function RulesTab() {
       queryClient.invalidateQueries({ queryKey: ['custom-rules'] })
       setPattern('')
       setCategory('')
+      setRuleText('')
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not create this rule.'),
   })
@@ -285,15 +299,23 @@ function RulesTab() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!pattern.trim() || !category.trim()) return
-    createMutation.mutate({ keyword_pattern: pattern, assigned_category: category })
+    if (!pattern.trim()) return
+    if (mode === 'category') {
+      if (!category.trim()) return
+      createMutation.mutate({ keyword_pattern: pattern, assigned_category: category })
+    } else {
+      if (!ruleText.trim()) return
+      createMutation.mutate({ keyword_pattern: pattern, rule_text: ruleText })
+    }
   }
 
   return (
     <div className="rounded-lg border-l-4 border-blue bg-surface-container-lowest p-6 shadow-level-1">
       <h3 className="mb-1 font-semibold text-navy">AI Custom Rules</h3>
       <p className="mb-4 text-sm text-on-surface-variant">
-        Teach the AI to automatically categorize recurring transactions.
+        Teach the AI to automatically categorize recurring transactions — map a keyword straight to a category, or
+        describe in your own words what should happen (e.g. "these are personal transfers between my own
+        accounts, not business income or expenses").
       </p>
 
       {error && (
@@ -311,15 +333,20 @@ function RulesTab() {
           {rulesQuery.data.map((rule) => (
             <li
               key={rule.rule_id}
-              className="flex items-center justify-between rounded-md bg-surface-container-low px-3 py-2 text-sm italic"
+              className="flex items-start justify-between gap-3 rounded-md bg-surface-container-low px-3 py-2 text-sm"
             >
-              <span>
-                "{rule.keyword_pattern}" → {rule.assigned_category}
+              <span className="italic">
+                "{rule.keyword_pattern}"{' '}
+                {rule.assigned_category ? (
+                  <>→ {rule.assigned_category}</>
+                ) : (
+                  <span className="not-italic text-on-surface-variant">— {rule.rule_text}</span>
+                )}
               </span>
               <button
                 onClick={() => deleteMutation.mutate(rule.rule_id)}
                 disabled={deleteMutation.isPending}
-                className="text-on-surface-variant hover:text-error"
+                className="shrink-0 text-on-surface-variant hover:text-error"
                 aria-label="Delete rule"
               >
                 {deleteMutation.isPending ? <Spinner size={14} /> : <span className="material-symbols-outlined text-lg">close</span>}
@@ -329,21 +356,62 @@ function RulesTab() {
         </ul>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row">
+      <div className="mb-3 flex gap-1 rounded-lg bg-surface-container-low p-1 text-sm">
+        <button
+          type="button"
+          onClick={() => setMode('category')}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
+            mode === 'category' ? 'bg-surface-container-lowest text-blue-dark shadow-level-1' : 'text-on-surface-variant'
+          }`}
+        >
+          Map to a category
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('freeform')}
+          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
+            mode === 'freeform' ? 'bg-surface-container-lowest text-blue-dark shadow-level-1' : 'text-on-surface-variant'
+          }`}
+        >
+          Describe what to do
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-2">
         <input
           value={pattern}
           onChange={(e) => setPattern(e.target.value)}
-          placeholder="Keyword (e.g. 'MTN')"
-          className="h-10 flex-1 rounded-md border border-outline-variant px-3 text-sm"
+          placeholder="Keyword (e.g. 'MTN' or 'internal transfer')"
+          className="h-10 w-full rounded-md border border-outline-variant px-3 text-sm"
         />
-        <input
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          placeholder="Category slug (e.g. exp_internet_data)"
-          className="h-10 flex-1 rounded-md border border-outline-variant px-3 text-sm"
-        />
+        {mode === 'category' ? (
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="h-10 w-full rounded-md border border-outline-variant bg-white px-3 text-sm"
+          >
+            <option value="">Select a category...</option>
+            {Object.entries(groupedCategories).map(([label, cats]) => (
+              <optgroup key={label} label={label}>
+                {(cats ?? []).map((c) => (
+                  <option key={c.developer_slug} value={c.developer_slug}>
+                    {c.category_name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        ) : (
+          <textarea
+            value={ruleText}
+            onChange={(e) => setRuleText(e.target.value)}
+            placeholder="e.g. If you see 'internal' or 'for me', this is a personal transaction — do not add it to business income or expenses."
+            rows={3}
+            className="w-full rounded-md border border-outline-variant px-3 py-2 text-sm"
+          />
+        )}
         <Button type="submit" isLoading={createMutation.isPending}>
-          Add
+          Add Rule
         </Button>
       </form>
     </div>

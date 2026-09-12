@@ -26,3 +26,10 @@ class AdvisoryQueryResponse(BaseModel):
     session_id: UUID
     answer: str
     sources: list[str]
+
+
+class AdvisorySessionSummary(BaseModel):
+    session_id: UUID
+    # First question asked in the session — used as a display label in the session list.
+    label: str
+    last_active: datetime

@@ -33,6 +33,7 @@ def build_itemized_breakdown(
 
     income_totals: dict[str, float] = defaultdict(float)
     deduction_totals: dict[str, float] = defaultdict(float)
+    deduction_gross_totals: dict[str, float] = defaultdict(float)
     relief_totals: dict[str, float] = defaultdict(float)
 
     for tx in transactions:
@@ -41,6 +42,7 @@ def build_itemized_breakdown(
             if tx.tax_treatment not in EXCLUDED_INCOME_TREATMENTS:
                 income_totals[label] += tx.amount
         elif tx.classification == "Expense":
+            deduction_gross_totals[label] += tx.amount
             deduction_totals[label] += tx.amount * (tx.deductibility_percentage / 100.0)
         elif tx.classification == "Relief":
             amount = rent_relief_amount(tx.amount) if tx.category_slug == RENT_RELIEF_SLUG else tx.amount
@@ -49,9 +51,28 @@ def build_itemized_breakdown(
     def _to_items(totals: dict[str, float]) -> list[dict]:
         return [{"category_name": name, "amount": amount} for name, amount in totals.items() if amount > 0]
 
+    def _to_deduction_items(totals: dict[str, float], gross_totals: dict[str, float]) -> list[dict]:
+        """Each item also carries `gross_amount` (pre-deduction expense total) and
+        `rate` (the effective deductibility percentage, e.g. 100 for a fully
+        deductible category or the user's home-office percentage for utilities) so
+        the report can show what was claimed at what rate, not just the net figure.
+        """
+        items = []
+        for name, amount in totals.items():
+            if amount <= 0:
+                continue
+            gross = gross_totals[name]
+            items.append({
+                "category_name": name,
+                "amount": amount,
+                "gross_amount": gross,
+                "rate": (amount / gross * 100.0) if gross > 0 else 100.0,
+            })
+        return items
+
     return {
         "income_items": _to_items(income_totals),
-        "deduction_items": _to_items(deduction_totals),
+        "deduction_items": _to_deduction_items(deduction_totals, deduction_gross_totals),
         "relief_items": _to_items(relief_totals),
         "capital_allowance_items": capital_allowance_items,
     }

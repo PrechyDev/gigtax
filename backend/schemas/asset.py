@@ -14,6 +14,8 @@ class AssetOut(BaseModel):
     disposed: bool
     disposed_date: datetime | None
     current_year_allowance: float  # computed on read, not stored
+    cumulative_allowance_claimed: float  # sum of every year's allowance to date, computed on read
+    remaining_value: float  # cost minus cumulative_allowance_claimed, floored at 0, computed on read
 
     model_config = {"from_attributes": True}
 

@@ -25,3 +25,17 @@ export function queryAdvisor(question: string, sessionId?: string) {
 export function getAdvisoryHistory(sessionId: string) {
   return apiFetch<AdvisoryHistoryItem[]>('/advisory/history', { query: { session_id: sessionId } })
 }
+
+export interface AdvisorySessionSummary {
+  session_id: string
+  label: string
+  last_active: string
+}
+
+export function listAdvisorySessions() {
+  return apiFetch<AdvisorySessionSummary[]>('/advisory/sessions')
+}
+
+export function deleteAdvisorySession(sessionId: string) {
+  return apiFetch<void>(`/advisory/sessions/${sessionId}`, { method: 'DELETE' })
+}

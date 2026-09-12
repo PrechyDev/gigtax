@@ -16,13 +16,35 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 from modules.tax_computation.engine import TaxComputationResult
 
 
+def _format_period(period_start: datetime | None, period_end: datetime | None) -> str:
+    if period_start is None or period_end is None:
+        return "No approved records for this tax year yet"
+    if period_start.date() == period_end.date():
+        return period_start.strftime("%d %b %Y")
+    return f"{period_start.strftime('%d %b %Y')} – {period_end.strftime('%d %b %Y')}"
+
+
 def build_report_pdf(
-    user_name: str, tax_year: str, result: TaxComputationResult, items: dict | None = None
+    user_name: str,
+    tax_year: str,
+    result: TaxComputationResult,
+    items: dict | None = None,
+    *,
+    tin: str | None = None,
+    state_residence: str | None = None,
+    occupation_type: str | None = None,
+    period_start: datetime | None = None,
+    period_end: datetime | None = None,
 ) -> bytes:
     """`items` is the same {income_items, deduction_items, capital_allowance_items,
     relief_items} shape the web Reports page renders (see
     modules/tax_computation/reporting_helpers.py) — optional so any existing caller
     that doesn't have it yet still gets a valid PDF, just without the itemization.
+
+    `period_start`/`period_end` are the earliest/latest APPROVED record dates
+    actually on file for the year (see loader.get_records_period) — deliberately
+    not just "Jan 1 - Dec 31 of tax_year", so a user with a partial year of records
+    sees that reflected honestly rather than implying full-year coverage.
     """
     items = items or {}
     buffer = io.BytesIO()
@@ -31,6 +53,10 @@ def build_report_pdf(
     story = [
         Paragraph(f"GigTax Self-Assessment Report — {tax_year}", styles["Title"]),
         Paragraph(f"Prepared for: {user_name}", styles["Normal"]),
+        Paragraph(f"TIN: {tin or 'Not provided'}", styles["Normal"]),
+        Paragraph(f"State of Residence: {state_residence or 'Not provided'}", styles["Normal"]),
+        Paragraph(f"Occupation: {occupation_type or 'Not provided'}", styles["Normal"]),
+        Paragraph(f"Records Covered: {_format_period(period_start, period_end)}", styles["Normal"]),
         Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]),
         Spacer(1, 0.5 * cm),
     ]
@@ -71,10 +97,30 @@ def build_report_pdf(
                 if not entries:
                     continue
                 story.append(Paragraph(section_label, styles["Heading3"]))
-                item_data = [["Category", "Amount"]] + [
-                    [entry["category_name"], f"₦{entry['amount']:,.2f}"] for entry in entries
-                ]
-                item_table = Table(item_data, colWidths=[9 * cm, 6 * cm])
+                # Deduction and capital allowance items carry `rate`/`gross_amount`
+                # (see reporting_helpers.build_itemized_breakdown and
+                # loader.load_capital_allowance_items) — shown as their own columns
+                # so a reader can see, e.g., "100%" for a normal expense versus a
+                # home-office category's user-set percentage, and the original
+                # amount that rate was applied to.
+                has_rate = any(entry.get("rate") is not None for entry in entries)
+                if has_rate:
+                    item_data = [["Category", "Gross Amount", "Rate", "Amount Deducted"]] + [
+                        [
+                            entry["category_name"],
+                            f"₦{entry.get('gross_amount', entry['amount']):,.2f}",
+                            f"{entry['rate']:.0f}%",
+                            f"₦{entry['amount']:,.2f}",
+                        ]
+                        for entry in entries
+                    ]
+                    col_widths = [6.5 * cm, 4 * cm, 2 * cm, 4 * cm]
+                else:
+                    item_data = [["Category", "Amount"]] + [
+                        [entry["category_name"], f"₦{entry['amount']:,.2f}"] for entry in entries
+                    ]
+                    col_widths = [9 * cm, 6 * cm]
+                item_table = Table(item_data, colWidths=col_widths)
                 item_table.setStyle(TableStyle([
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                     ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
