@@ -1,5 +1,3 @@
-# Filing Guidance — Lagos State
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on LIRS's official channels before filing.*
 
 ## Tax Authority
@@ -29,10 +27,3 @@ LIRS's **eTax Portal** (search "LIRS eTax" for the current official link — eta
 ## Tax Clearance Certificate (TCC)
 
 Once LIRS confirms full payment against your assessment, an electronic **Tax Clearance Certificate (e-TCC)** becomes downloadable directly from your eTax dashboard. No separate application is needed.
-
-## Sources
-
-- LIRS eTax Portal (etax.lirs.net) — portal name and workflow as described in project research notes (`docs/nta_2025_research.md`), compiled 2026-09.
-- Nigeria Tax Act 2025 (Sections 20, 30, 41, 58) — federal framework underlying the state's Form A computation; see `docs/nta_2025_research.md` for the full band table.
-
-*Note: `https://etax.lirs.net` is stored as `portal_url` in `backend/db/seed_data/state_filing_portals.json` and linked directly in the app. It returned an HTTP 403 on a direct automated fetch (2026-09-12) — consistent with anti-bot protection on a login page rather than a dead link, and it matches the address independently named in project research — but this wasn't visually confirmed the way the FCT/Oyo/Osun portals were. If it ever stops working, search "LIRS eTax" for the current address.*

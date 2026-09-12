@@ -1,5 +1,3 @@
-# Filing Guidance — Rivers State
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on RIRS's official channels before filing.*
 
 ## Tax Authority
@@ -29,10 +27,3 @@ The **RIVTAMIS** portal (search "RIVTAMIS" for the current official link — riv
 ## Tax Clearance Certificate (TCC)
 
 Triggered automatically once your payment reference is declared and confirmed on RIVTAMIS — no separate manual application step.
-
-## Sources
-
-- RIVTAMIS portal (rivtamis.riversbirs.gov.ng) — portal name and workflow as described in project research notes (`docs/nta_2025_research.md`), compiled 2026-09.
-- Nigeria Tax Act 2025 (Sections 20, 30, 58) — federal framework underlying the self-assessment computation; see `docs/nta_2025_research.md` for the full band table.
-
-*Note: `https://rivtamis.riversbirs.gov.ng` is stored as `portal_url` in `backend/db/seed_data/state_filing_portals.json` and linked directly in the app. A direct fetch (2026-09-12) resolved to a bare redirect page with no RIVTAMIS branding visible — likely correct, given it matches the name used elsewhere in project research, but not fully visually confirmed. Check that you land on a RIVTAMIS-branded page after the redirect; if not, search "RIVTAMIS" for the current address.*

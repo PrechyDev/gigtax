@@ -1,5 +1,3 @@
-# Filing Guidance — FCT (Abuja)
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on FCT-IRS's official channels before filing.*
 
 ## Tax Authority
@@ -36,10 +34,3 @@ Annual Direct Assessment returns follow the same national **March 31** filing de
 ## Tax Clearance Certificate (TCC)
 
 Issued through the FCT-IRS Taxportal once your return and payment are confirmed. Required for several downstream government services in the FCT (land allocation, passport renewal, government contract bidding), so it is worth requesting even if you don't need it immediately.
-
-## Sources
-
-- FCT-IRS Self Service Portal (fcttaxportal.fctirs.gov.ng) — portal name and workflow as described in project research notes (`docs/nta_2025_research.md`), compiled 2026-09.
-- Nigeria Tax Act 2025 (Sections 20, 27, 30, 58) — federal framework underlying Form A; see `docs/nta_2025_research.md` for the full band table.
-
-*Note: `https://fcttaxportal.fctirs.gov.ng` is stored as `portal_url` in `backend/db/seed_data/state_filing_portals.json` and linked directly in the app — confirmed live by direct fetch on 2026-09-12 (loaded the real FCT-IRS E-Tax login/session page). If it ever stops working, search "FCT-IRS Taxportal" for the current address.*

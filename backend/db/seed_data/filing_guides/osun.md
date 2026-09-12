@@ -1,5 +1,3 @@
-# Filing Guidance — Osun State
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on the Osun Internal Revenue Service's (OIRS) official channels before filing.*
 
 ## Tax Authority
@@ -36,14 +34,3 @@ OIRS has publicly reaffirmed a **March 31** deadline for self-employed individua
 - Direct Assessment filers who self-assess and pay through a designated bank can obtain an e-TCC without an office visit, per OIRS's own description of the process.
 - As with other states, a TCC typically needs three years of Direct Assessment returns/payments on record to be issued, covering the three years preceding the year of application.
 - *Not confirmed*: exact processing/turnaround time for Osun's e-TCC specifically — check with OIRS directly (contact: info@oirs.ng or WhatsApp +234 818 969 7104, per the OIRS contact page).
-
-## Sources
-
-- [OIRS — Osun Internal Revenue Service (homepage)](https://irs.os.gov.ng/)
-- [Individual Annual Tax Returns — Osun Internal Revenue Service](https://irs.os.gov.ng/individual-annual-tax-returns/) — filing categories, submission methods, required info
-- [OSSG Reaffirms Deadline for Filing Annual Tax Returns — Osun Internal Revenue Service](https://irs.os.gov.ng/ossg-reaffirms-deadline-for-filing-annual-tax-returns/) — March 31 self-employed deadline, January 31 employer deadline, PITA 2004 basis
-- [Individual TIN Application — Osun RMS](https://osun.electroniccollectionsecg.com/taxes/apply)
-- [Contact us — Osun Internal Revenue Service](https://irs.os.gov.ng/contact-us/)
-- [FAQs — Osun Internal Revenue Service](https://irs.os.gov.ng/faq/) (page content limited at time of research)
-
-*Note: `https://irs.os.gov.ng` is stored as `portal_url` in `backend/db/seed_data/state_filing_portals.json` and linked directly in the app — confirmed live by direct fetch on 2026-09-12 (official OIRS homepage). If it ever stops working, search "OIRS Osun" for the current address.*

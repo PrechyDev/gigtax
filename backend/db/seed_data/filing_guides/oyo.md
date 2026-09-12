@@ -1,5 +1,3 @@
-# Filing Guidance — Oyo State
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on the Oyo State Board of Internal Revenue's (OYSBIR) official channels before filing.*
 
 ## Tax Authority
@@ -30,7 +28,7 @@ Direct Assessment (Form A) is the route OYSBIR designates for self-employed indi
 
 ## Filing Deadline
 
-OYSBIR's published material explicitly states an **employer PAYE annual returns deadline of January 31** each year (covering the preceding year's employee emoluments), consistent with Section 81(2) of the Personal Income Tax Act. A specific, explicitly-published deadline date for *self-employed* Direct Assessment filers was not found on OYSBIR's own materials at the time of this research. Under the general PITA framework that also governs Lagos, FCT, and Rivers (see the main NTA 2025 research file), self-employed individuals are expected to file within 90 days of the start of the year of assessment, i.e., by **March 31**. Treat March 31 as the working assumption but confirm with OYSBIR directly, since the state site did not state this figure itself.
+OYSBIR's published material explicitly states an **employer PAYE annual returns deadline of January 31** each year (covering the preceding year's employee emoluments), consistent with Section 81(2) of the Personal Income Tax Act. A specific, explicitly-published deadline date for *self-employed* Direct Assessment filers was not found on OYSBIR's own materials at the time of this research. Under the general PITA framework that also governs Lagos, FCT, and Rivers, self-employed individuals are expected to file within 90 days of the start of the year of assessment, i.e., by **March 31**. Treat March 31 as the working assumption but confirm with OYSBIR directly, since the state site did not state this figure itself.
 
 ## Tax Clearance Certificate (TCC)
 
@@ -38,15 +36,3 @@ OYSBIR's published material explicitly states an **employer PAYE annual returns 
 - **Self-employed applicants:** submit a written application together with the last three years' payment receipts to your Assessment Authority. The Authority reviews the documents and may raise clarifying questions. On approval, you are notified (by SMS/email per the self-service portal) to collect or download your certificate; OYSBIR's self-service portal supports downloading an electronic TCC after login.
 - **Employees:** your employer must have filed three years of annual returns and remitted the associated deductions before the Assessment Authority will request issuance of your TCC.
 - *Not confirmed: exact processing turnaround time for Oyo State specifically* — check with OYSBIR or your Assessment Authority.
-
-## Sources
-
-- [Self Service | Oyo State Board of Internal Revenue](https://selfservice.oyostatebir.com/) — registration fields, self-service portal functions, S-TIN
-- [Oyo State Board of Internal Revenue — official site](https://www.oyostatebir.com/OyoRevenue/default.aspx)
-- [Register as a Taxpayer or an Employer of Labour/Collection Agent — OYO STATE](https://oyostaterevenue.com/register-as-a-taxpayer-or-an-employer-of-labourcollection-agent/) — paper registration route
-- [How to — OYO STATE](https://oyostaterevenue.com/how-to-2/) — step-by-step registration, payment, and TCC process
-- [Personal Income Tax — OYO STATE](https://oyostaterevenue.com/personal-income-tax/) — Direct Assessment description, self-assessment e-TCC process
-- [Pay your Personal Income Tax — OYO STATE](https://oyostaterevenue.com/pay-your-personal-income-tax/)
-- Personal Income Tax Act 2004 (as amended), Section 81(2) — employer annual returns deadline, referenced via OYSBIR guidance
-
-*Note: `https://selfservice.oyostatebir.com` is stored as `portal_url` in `backend/db/seed_data/state_filing_portals.json` and linked directly in the app — confirmed live by direct fetch on 2026-09-12 (S-TIN registration, filing, payment, and TCC verification all present). If it ever stops working, search "OYSBIR self service" for the current address.*

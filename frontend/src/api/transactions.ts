@@ -39,9 +39,10 @@ export interface TransactionFilters {
   tax_year?: string
   transaction_type?: string
   category_slug?: string
+  exclude_uncategorized?: boolean
   limit?: number
   offset?: number
-  [key: string]: string | number | undefined
+  [key: string]: string | number | boolean | undefined
 }
 
 export function listTransactions(filters: TransactionFilters = {}) {

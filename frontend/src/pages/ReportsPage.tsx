@@ -9,15 +9,17 @@ import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner } from '../components/ui/Banner'
 import { PageSpinner } from '../components/ui/Spinner'
+import { YearSelector } from '../components/ui/YearSelector'
 import { ApiError } from '../lib/apiClient'
 import { formatDateTime, formatNaira } from '../lib/formatters'
-
-const CURRENT_YEAR = String(new Date().getFullYear())
 
 export function ReportsPage() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const taxYear = user?.tax_year ?? CURRENT_YEAR
+  // Defaults to the real current year, not the profile's Tax Year field — see the same
+  // note on DashboardPage.tsx. The selector below is how a prior year's report is
+  // reached on purpose instead.
+  const [taxYear, setTaxYear] = useState(() => String(new Date().getFullYear()))
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
 
@@ -61,7 +63,10 @@ export function ReportsPage() {
   return (
     <AppShell title="Annual Tax Report">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-on-surface-variant">Fiscal Year {taxYear} — Self-Assessment Summary</p>
+        <div className="flex items-center gap-3">
+          <p className="text-on-surface-variant">Fiscal Year {taxYear} — Self-Assessment Summary</p>
+          <YearSelector value={taxYear} onChange={setTaxYear} />
+        </div>
         <div className="flex gap-2">
           <Button variant="secondary" isLoading={computeMutation.isPending} onClick={() => computeMutation.mutate()}>
             Recompute
@@ -232,7 +237,7 @@ function FilingGuidancePanel({
             <span className="material-symbols-outlined text-base">{guideOpen ? 'expand_less' : 'expand_more'}</span>
           </button>
           {guideOpen && (
-            <div className="markdown-content mt-3 max-h-[32rem] overflow-y-auto text-sm">
+            <div className="markdown-content filing-guide-content mt-3 max-h-[32rem] overflow-y-auto text-sm">
               <ReactMarkdown>{guidance.guide_markdown}</ReactMarkdown>
             </div>
           )}

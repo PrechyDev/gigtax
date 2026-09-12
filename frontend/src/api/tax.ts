@@ -59,6 +59,7 @@ export interface DashboardData {
   total_capital_allowances: number
   estimated_tax_owed: number
   pending_review_count: number
+  uncategorized_count: number
   locked_statements_count: number
   missing_receipts_count: number
   google_drive_connected: boolean

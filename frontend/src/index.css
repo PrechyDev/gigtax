@@ -70,9 +70,37 @@ body {
 }
 
 /* Renders the AI advisor's markdown responses (Gemini naturally outputs **bold**,
-   bullet lists, etc.) — without this they arrived as literal, unrendered markdown
-   syntax in the chat bubble. Scoped narrowly rather than pulling in the full
-   Tailwind typography plugin for one chat bubble's worth of elements. */
+   bullet lists, etc.) and the state filing-guidance walkthroughs (headed sections,
+   e.g. "## Tax Authority") — without this, headings fell back to the browser's
+   oversized defaults, out of step with the rest of the app's type scale. Scoped
+   narrowly rather than pulling in the full Tailwind typography plugin. */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  color: var(--color-navy);
+  font-weight: 600;
+  margin: 1.1em 0 0.4em;
+}
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
+  margin-top: 0;
+}
+.markdown-content h1 {
+  font-size: 1.15em;
+}
+.markdown-content h2 {
+  font-size: 1.05em;
+}
+.markdown-content h3 {
+  font-size: 1em;
+}
+/* Only the filing-guidance panel's leading "*Last researched...*" disclaimer line
+   should read as muted — the shared .markdown-content class is also used for the AI
+   Advisor's chat answers, where emphasis should stay normal-colored. */
+.filing-guide-content em {
+  color: var(--color-on-surface-variant);
+}
 .markdown-content p {
   margin: 0 0 0.5em;
 }

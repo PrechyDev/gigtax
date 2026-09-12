@@ -53,6 +53,59 @@ def test_list_transactions_filters_by_review_status(client):
     assert response_pending.json() == []
 
 
+def test_exclude_uncategorized_separates_pending_review_from_uncategorized_bucket(client):
+    """Pending Review and Uncategorized must be disjoint buckets — see
+    api/routes/transactions.py's exclude_uncategorized filter, which the Ledger's
+    "Pending Review" tab uses to stay separate from its "Uncategorized" tab
+    (category_slug=uncategorized).
+    """
+    headers = _auth_header(client, "tx-user-exclude-uncat@example.com")
+
+    real_category = client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-02-01T00:00:00Z",
+        "description": "Software", "amount": 5000, "category_slug": "exp_software_subscriptions",
+    }, headers=headers).json()
+    client.patch(f"/transactions/{real_category['transaction_id']}", json={"review_status": "pending"}, headers=headers)
+
+    uncategorized = client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-02-02T00:00:00Z",
+        "description": "Transfer to self", "amount": 3000, "category_slug": "exp_software_subscriptions",
+    }, headers=headers).json()
+    client.patch(
+        f"/transactions/{uncategorized['transaction_id']}",
+        json={"review_status": "pending", "category_slug": "uncategorized"},
+        headers=headers,
+    )
+
+    pending_review = client.get(
+        "/transactions", params={"review_status": "pending", "exclude_uncategorized": True}, headers=headers
+    ).json()
+    assert [t["description"] for t in pending_review] == ["Software"]
+
+    uncategorized_bucket = client.get(
+        "/transactions", params={"review_status": "pending", "category_slug": "uncategorized"}, headers=headers
+    ).json()
+    assert [t["description"] for t in uncategorized_bucket] == ["Transfer to self"]
+
+
+def test_exclude_uncategorized_keeps_transactions_with_no_category_at_all(client):
+    """A transaction with no category (e.g. manual entry with no category_slug) isn't
+    the "AI flagged this as personal" case exclude_uncategorized targets — it must stay
+    visible in Pending Review, not silently disappear.
+    """
+    headers = _auth_header(client, "tx-user-exclude-uncat-null@example.com")
+    create = client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-02-01T00:00:00Z",
+        "description": "No category set", "amount": 1000,
+    }, headers=headers).json()
+    client.patch(f"/transactions/{create['transaction_id']}", json={"review_status": "pending"}, headers=headers)
+
+    response = client.get(
+        "/transactions", params={"review_status": "pending", "exclude_uncategorized": True}, headers=headers
+    ).json()
+    assert [t["description"] for t in response] == ["No category set"]
+
+
 def test_list_transactions_respects_limit_and_offset(client):
     headers = _auth_header(client, "tx-user-paging@example.com")
     for i in range(5):

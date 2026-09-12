@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from api.deps import get_current_user
@@ -12,6 +12,7 @@ from models.category import Category
 from models.transaction import ExpenseRecord, IncomeRecord, Transaction
 from models.user import User
 from modules.ingestion.asset_sync import sync_asset_for_transaction
+from modules.ingestion.persistence import UNCATEGORIZED_SLUG
 from schemas.transaction import (
     BulkTransactionDelete,
     BulkTransactionReview,
@@ -77,6 +78,10 @@ def list_transactions(
         default=None,
         description="Filters to transactions currently resolved to this category (user_category_id if set, else ai_category_id) — e.g. 'uncategorized' to find AI-flagged personal/unclear transactions needing a decision.",
     ),
+    exclude_uncategorized: bool = Query(
+        default=False,
+        description="Excludes transactions resolved to the 'uncategorized' fallback category — used by the Pending Review bucket to stay disjoint from the Uncategorized bucket (see category_slug='uncategorized').",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -103,6 +108,13 @@ def list_transactions(
         query = query.filter(
             func.coalesce(Transaction.user_category_id, Transaction.ai_category_id) == category_id
         )
+    if exclude_uncategorized:
+        uncategorized = db.query(Category).filter(Category.developer_slug == UNCATEGORIZED_SLUG).first()
+        if uncategorized:
+            resolved_category = func.coalesce(Transaction.user_category_id, Transaction.ai_category_id)
+            # A transaction with no resolved category at all isn't the "flagged personal"
+            # case this excludes — it should stay visible here, not silently disappear.
+            query = query.filter(or_(resolved_category != uncategorized.category_id, resolved_category.is_(None)))
     return query.order_by(Transaction.date.desc()).offset(offset).limit(limit).all()
 
 

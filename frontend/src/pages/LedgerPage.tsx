@@ -30,30 +30,51 @@ import { formatDate, formatNaira } from '../lib/formatters'
 const LOW_CONFIDENCE_THRESHOLD = 0.6
 // The AI pipeline force-categorizes personal/non-business transactions into this
 // slug (see backend/modules/ai_categorization/categorization.py, instructions #5/#6)
-// rather than omitting them — this filters the Ledger down to exactly those, so a
-// user can skim and either recategorize (real business, rescued) or discard (really
-// personal) without them being buried among ordinary low-confidence pending items.
-const NEEDS_ATTENTION_CATEGORY_SLUG = 'uncategorized'
+// rather than omitting them — the Uncategorized bucket below filters down to exactly
+// these, so a user can skim and either recategorize (real business, rescued) or
+// discard (really personal) without them being buried among ordinary pending items.
+const UNCATEGORIZED_CATEGORY_SLUG = 'uncategorized'
 const DISCARD_RETENTION_DAYS = 30
 
-type LedgerTab = 'all' | 'pending' | 'needs_attention' | 'income' | 'expense' | 'discarded'
+// Every transaction lives in exactly one of these four — a strict partition, not an
+// overlapping set of views like the old flat tab list (All/Pending/Income/Expense/
+// Needs Attention/Discarded) was:
+//   Approved         review_status = APPROVED
+//   Pending Review   review_status = PENDING   and NOT uncategorized
+//   Uncategorized    review_status = PENDING   and IS uncategorized
+//   Discarded        review_status = REJECTED
+// Income/Expense is a second, independent dimension — only offered as a sub-filter on
+// Approved and Pending Review, where volume is high enough to need it; Uncategorized
+// and Discarded are small enough that "just show me everything in here" is enough.
+type LedgerBucket = 'approved' | 'pending' | 'uncategorized' | 'discarded'
+type TypeFilter = 'all' | 'income' | 'expense'
 
-const LEDGER_TABS: { id: LedgerTab; label: string }[] = [
-  { id: 'all', label: 'All' },
+const LEDGER_BUCKETS: { id: LedgerBucket; label: string }[] = [
+  { id: 'approved', label: 'Approved' },
   { id: 'pending', label: 'Pending Review' },
-  { id: 'needs_attention', label: 'Needs Attention' },
-  { id: 'income', label: 'Income' },
-  { id: 'expense', label: 'Expenses' },
+  { id: 'uncategorized', label: 'Uncategorized' },
   { id: 'discarded', label: 'Discarded' },
 ]
 
-function filtersForTab(tab: LedgerTab): TransactionFilters {
-  if (tab === 'pending') return { review_status: 'PENDING' }
-  if (tab === 'needs_attention') return { review_status: 'PENDING', category_slug: NEEDS_ATTENTION_CATEGORY_SLUG }
-  if (tab === 'income') return { transaction_type: 'income' }
-  if (tab === 'expense') return { transaction_type: 'expense' }
-  if (tab === 'discarded') return { review_status: 'REJECTED' }
-  return {}
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'income', label: 'Income' },
+  { id: 'expense', label: 'Expenses' },
+]
+
+// Only these two buckets support the Income/Expenses sub-filter.
+function bucketHasTypeFilter(bucket: LedgerBucket): boolean {
+  return bucket === 'approved' || bucket === 'pending'
+}
+
+function filtersForBucket(bucket: LedgerBucket, typeFilter: TypeFilter): TransactionFilters {
+  const typeFilterParam: TransactionFilters =
+    bucketHasTypeFilter(bucket) && typeFilter !== 'all' ? { transaction_type: typeFilter } : {}
+
+  if (bucket === 'approved') return { review_status: 'APPROVED', ...typeFilterParam }
+  if (bucket === 'pending') return { review_status: 'PENDING', exclude_uncategorized: true, ...typeFilterParam }
+  if (bucket === 'uncategorized') return { review_status: 'PENDING', category_slug: UNCATEGORIZED_CATEGORY_SLUG }
+  return { review_status: 'REJECTED' }
 }
 
 function autoDeleteDate(discardedAt: string): string {
@@ -63,30 +84,33 @@ function autoDeleteDate(discardedAt: string): string {
 }
 
 const PAGE_SIZE = 50
-const VALID_TABS = new Set(LEDGER_TABS.map((t) => t.id))
+const VALID_BUCKETS = new Set(LEDGER_BUCKETS.map((t) => t.id))
 
-function isLedgerTab(value: string | null): value is LedgerTab {
-  return value !== null && VALID_TABS.has(value as LedgerTab)
+function isLedgerBucket(value: string | null): value is LedgerBucket {
+  return value !== null && VALID_BUCKETS.has(value as LedgerBucket)
 }
 
 export function LedgerPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
-  // Lets the dashboard's "N awaiting your review" link land straight on the right
-  // tab (/ledger?tab=pending) instead of just the page in its default state.
-  const [tab, setTab] = useState<LedgerTab>(() => {
+  // Lets the dashboard's "N awaiting your review" / "N flagged as personal" links land
+  // straight on the right bucket (/ledger?tab=pending, ?tab=uncategorized) instead of
+  // just the page in its default state.
+  const [bucket, setBucket] = useState<LedgerBucket>(() => {
     const fromUrl = searchParams.get('tab')
-    return isLedgerTab(fromUrl) ? fromUrl : 'all'
+    return isLedgerBucket(fromUrl) ? fromUrl : 'pending'
   })
-  const isDiscardedTab = tab === 'discarded'
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const isDiscardedTab = bucket === 'discarded'
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const transactionsQuery = useInfiniteQuery({
-    queryKey: ['transactions', tab],
-    queryFn: ({ pageParam }) => listTransactions({ ...filtersForTab(tab), limit: PAGE_SIZE, offset: pageParam }),
+    queryKey: ['transactions', bucket, typeFilter],
+    queryFn: ({ pageParam }) =>
+      listTransactions({ ...filtersForBucket(bucket, typeFilter), limit: PAGE_SIZE, offset: pageParam }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => (lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined),
   })
@@ -188,15 +212,36 @@ export function LedgerPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-on-surface-variant">Review and confirm AI-categorized transactions.</p>
         <div className="flex flex-wrap gap-1 rounded-lg bg-surface-container-low p-1">
-          {LEDGER_TABS.map((t) => (
+          {LEDGER_BUCKETS.map((b) => (
             <button
-              key={t.id}
+              key={b.id}
               onClick={() => {
-                setTab(t.id)
+                setBucket(b.id)
                 setSelectedIds(new Set())
               }}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                tab === t.id
+                bucket === b.id
+                  ? 'bg-surface-container-lowest text-blue-dark shadow-level-1'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {bucketHasTypeFilter(bucket) && (
+        <div className="mb-4 flex gap-1 rounded-lg bg-surface-container-low p-1 text-sm w-fit">
+          {TYPE_FILTERS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => {
+                setTypeFilter(t.id)
+                setSelectedIds(new Set())
+              }}
+              className={`rounded-md px-3 py-1 font-medium transition-colors ${
+                typeFilter === t.id
                   ? 'bg-surface-container-lowest text-blue-dark shadow-level-1'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
@@ -205,9 +250,9 @@ export function LedgerPage() {
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {tab === 'needs_attention' && (
+      {bucket === 'uncategorized' && (
         <p className="mb-4 text-sm text-on-surface-variant">
           These were flagged as personal or unclear and left out of your tax calculation. Pick a real category to
           bring one back into your business records, or discard it if it really is personal.
@@ -384,12 +429,12 @@ function TransactionRow({
   const isLowConfidence =
     transaction.confidence_score !== null && transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
   // "uncategorized" isn't a selectable option in groupCategoriesForType (it's the AI's
-  // personal/unclear fallback, not a real business category — see NEEDS_ATTENTION_CATEGORY_SLUG
+  // personal/unclear fallback, not a real business category — see UNCATEGORIZED_CATEGORY_SLUG
   // above), so treating it as "a category is selected" would pre-fill the dropdown with
   // whatever option happens to render first, silently misrepresenting the transaction as
-  // already categorized. Every row in the Needs Attention tab hits this, so it must resolve
-  // to "nothing selected" instead.
-  const isUncategorized = category?.developer_slug === NEEDS_ATTENTION_CATEGORY_SLUG
+  // already categorized. Every row in the Uncategorized bucket hits this, so it must
+  // resolve to "nothing selected" instead.
+  const isUncategorized = category?.developer_slug === UNCATEGORIZED_CATEGORY_SLUG
   const selectableCategory = category && !isUncategorized ? category : undefined
 
   function saveDescription() {

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../api/tax'
@@ -5,14 +6,17 @@ import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
 import { PageSpinner } from '../components/ui/Spinner'
 import { ErrorBanner } from '../components/ui/Banner'
+import { YearSelector } from '../components/ui/YearSelector'
 import { ApiError } from '../lib/apiClient'
 import { formatNaira } from '../lib/formatters'
 
-const CURRENT_YEAR = String(new Date().getFullYear())
-
 export function DashboardPage() {
   const { user } = useAuth()
-  const taxYear = user?.tax_year ?? CURRENT_YEAR
+  // Defaults to the real current year, not the profile's Tax Year field — that field
+  // is a static setting nobody reliably remembers to bump every January, which is
+  // exactly what made last year's data vanish from the dashboard once the calendar
+  // rolled over. This selector is how you look at a prior year on purpose instead.
+  const [taxYear, setTaxYear] = useState(() => String(new Date().getFullYear()))
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['dashboard', taxYear],
@@ -21,9 +25,12 @@ export function DashboardPage() {
 
   return (
     <AppShell title="Dashboard">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-navy">Welcome back, {user?.name?.split(' ')[0]}</h2>
-        <p className="text-on-surface-variant">Here is your financial overview for Fiscal Year {taxYear}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-navy">Welcome back, {user?.name?.split(' ')[0]}</h2>
+          <p className="text-on-surface-variant">Here is your financial overview for Fiscal Year {taxYear}</p>
+        </div>
+        <YearSelector value={taxYear} onChange={setTaxYear} />
       </div>
 
       {isLoading && <PageSpinner />}

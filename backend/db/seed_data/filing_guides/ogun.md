@@ -1,5 +1,3 @@
-# Filing Guidance — Ogun State
-
 *Last researched: 2026-09-12. State filing portals, forms, and deadlines change — always confirm current details on the Ogun State Internal Revenue Service's (OGIRS) official channels before filing.*
 
 ## Tax Authority
@@ -32,7 +30,7 @@ OGIRS's own site references a specific filing item for "Income Tax Returns for S
 
 ## Filing Deadline
 
-OGIRS's published material states an **employer PAYE annual returns deadline of January 31** each year, covering the preceding year's employee emoluments, with monthly PAYE remittances due by the 10th of the following month. A specific, explicitly-published deadline for *self-employed* Direct Assessment filers was not found on OGIRS's own materials at the time of this research. Under the general PITA framework shared across Nigerian states (also documented for Lagos, FCT, and Rivers in the main NTA 2025 research file), self-employed individuals are generally expected to file within 90 days of the start of the assessment year, i.e., by **March 31**. Treat March 31 as the working assumption for Ogun State but confirm directly with OGIRS, since it was not stated explicitly in the state's own self-employed-facing material found.
+OGIRS's published material states an **employer PAYE annual returns deadline of January 31** each year, covering the preceding year's employee emoluments, with monthly PAYE remittances due by the 10th of the following month. A specific, explicitly-published deadline for *self-employed* Direct Assessment filers was not found on OGIRS's own materials at the time of this research. Under the general PITA framework shared across Nigerian states (also true for Lagos, FCT, and Rivers), self-employed individuals are generally expected to file within 90 days of the start of the assessment year, i.e., by **March 31**. Treat March 31 as the working assumption for Ogun State but confirm directly with OGIRS, since it was not stated explicitly in the state's own self-employed-facing material found.
 
 ## Tax Clearance Certificate (TCC)
 
@@ -40,15 +38,3 @@ OGIRS's published material states an **employer PAYE annual returns deadline of 
 - **Self-employed applicants:** submit a written application with three years of payment receipts to the relevant Assessment Authority; the Authority reviews the documents, may ask clarifying questions, and on approval, notifies the applicant to collect the certificate.
 - **Processing time:** OGIRS's own e-TCC page states certificates are issued **72 hours after payment and proper filing of all required documents**.
 - **Cost:** OGIRS's e-TCC page explicitly states there is **no processing fee** for the certificate.
-
-## Sources
-
-- [Ogun State Internal Revenue Service | Official Website — Self Service](https://www.ogunstaterevenue.com/en/selfservice)
-- [OGIRS Portal — Individual Registration](https://ogirs.ogunstate.gov.ng/individual)
-- [OGIRS - Ogun State Internal Revenue Service (portal.ogetax.ogunstate.gov.ng)](https://portal.ogetax.ogunstate.gov.ng/)
-- [Personal Income Tax FAQs — Ogun State Internal Revenue](https://www.ogunstaterevenue.com/en/pita) — who must file, Assessment Notice/Revenue Receipt process, January 31 employer deadline
-- [e-TCC — Ogun State Internal Revenue Service](http://www.ogunstaterevenue.com/en/etcc) — 72-hour processing, three-year coverage, no processing fee
-- [E-filing Made Easy: A Step-by-Step Guide to Online Tax Submission with OGIRS — INNERKONSULT LTD.](https://innerkonsult.com/e-filing-made-easy-a-step-by-step-guide-to-online-tax-submission-with-ogirs/) — general e-filing workflow (third-party practitioner guide, not an OGIRS primary source; used only for the general filing sequence)
-- Personal Income Tax Act 2004 (as amended), Section 81(2) — employer annual returns deadline, referenced via OGIRS FAQ
-
-*Note: `portal_url` is deliberately left null for Ogun in `backend/db/seed_data/state_filing_portals.json` — no clickable link is shown in the app. A direct fetch of `portal.ogetax.ogunstate.gov.ng` (2026-09-12) loaded a page, but with signs of being stale rather than the live system (dead "#" links, a news section last updated 2021, unlinked "Get Started" buttons). Combined with three different Ogun revenue web addresses being in circulation with no way to confirm which is canonical (see above), this isn't confirmed reliable enough to link directly. Search "OGIRS Ogun State" and verify you're on the current official site before registering or filing.*
