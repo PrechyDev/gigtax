@@ -722,7 +722,19 @@ function ReceiptsPanel({ transactionId }: { transactionId: string }) {
       {receiptsQuery.data && receiptsQuery.data.length > 0 && (
         <ul className="mb-2 space-y-1 text-sm">
           {receiptsQuery.data.map((r) => (
-            <li key={r.receipt_id}>{r.file_type ?? 'file'} — uploaded {formatDate(r.upload_date)}</li>
+            <li key={r.receipt_id}>
+              {/* storage_path is the Google Drive file id (BYOS — we never hold the
+                  bytes ourselves), so this opens Drive's own viewer for it directly. */}
+              <a
+                href={`https://drive.google.com/file/d/${r.storage_path}/view`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue hover:underline"
+              >
+                {r.file_type ?? 'file'}
+              </a>{' '}
+              — uploaded {formatDate(r.upload_date)}
+            </li>
           ))}
         </ul>
       )}
