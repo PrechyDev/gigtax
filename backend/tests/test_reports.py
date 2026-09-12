@@ -26,6 +26,36 @@ def test_download_report_returns_a_pdf(client):
     assert response.content.startswith(b"%PDF")
 
 
+def test_report_still_shows_summary_and_items_when_minimum_wage_exempt(client):
+    """The web Reports page shows the exemption banner ABOVE its Tax Summary table,
+    never instead of it (see ReportsPage.tsx) — the PDF must match rather than
+    stopping at the exemption sentence. Only the band-by-band section is expected to
+    be genuinely absent, since no band actually applied.
+    """
+    headers = _auth_header(client, "report-user8@example.com")
+    client.post("/transactions", json={
+        "transaction_type": "income", "date": "2026-03-01T00:00:00Z",
+        "description": "Small gig", "amount": 100_000, "category_slug": "freelance_gig_fees",
+    }, headers=headers)
+    client.post("/transactions", json={
+        "transaction_type": "expense", "date": "2026-03-01T00:00:00Z",
+        "description": "Adobe subscription", "amount": 10_000, "category_slug": "exp_software_subscriptions",
+    }, headers=headers)
+
+    response = client.get("/tax-computations/2026/report", headers=headers)
+    assert response.status_code == 200
+
+    with pdfplumber.open(io.BytesIO(response.content)) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+    assert "fully exempt" in text
+    assert "Total Income" in text
+    assert "Net Tax Payable" in text
+    assert "Itemized Breakdown" in text
+    assert "Software & Subscriptions" in text  # the category, not the raw description
+    assert "Band-by-band computation" not in text
+
+
 def test_report_includes_itemized_category_breakdown(client):
     headers = _auth_header(client, "report-user5@example.com")
     client.post("/transactions", json={
