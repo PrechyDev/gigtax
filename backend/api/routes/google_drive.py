@@ -9,7 +9,7 @@ from api.deps import get_current_user_allow_query_token
 from core.config import settings
 from core.crypto import encrypt_token
 from core.logger import get_logger
-from core.security import create_access_token, decode_access_token
+from core.security import create_access_token, decode_access_token, create_oauth_state_token, decode_oauth_state_token
 from db.session import get_db
 from models.user import User
 from services.drive_service import DriveService, build_auth_flow
@@ -47,9 +47,9 @@ def connect(current_user: User = Depends(get_current_user_allow_query_token)):
     try:
         # The callback is a plain browser redirect from Google with no Authorization
         # header, so we can't rely on get_current_user there — instead we smuggle the
-        # user's identity through the OAuth `state` param, signed with the same JWT
-        # mechanism as login tokens.
-        state = create_access_token(current_user.user_id, expires_minutes=STATE_TOKEN_EXPIRE_MINUTES)
+        # user's identity through the OAuth `state` param, signed with a dedicated
+        # OAuth state token that cannot be used as an API access token.
+        state = create_oauth_state_token(current_user.user_id, expires_minutes=STATE_TOKEN_EXPIRE_MINUTES)
         flow = build_auth_flow(state=state)
         authorization_url, _ = flow.authorization_url(
             access_type="offline",
@@ -66,7 +66,7 @@ def connect(current_user: User = Depends(get_current_user_allow_query_token)):
 @router.get("/callback")
 def callback(code: str, state: str, db: Session = Depends(get_db)):
     try:
-        user_id = decode_access_token(state)
+        user_id = decode_oauth_state_token(state)
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state")
 
