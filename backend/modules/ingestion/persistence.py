@@ -61,14 +61,6 @@ def persist_parsed_transaction(
         record = IncomeRecord(**common_kwargs, income_source=parsed.income_source)
     else:
         record = ExpenseRecord(**common_kwargs, merchant_name=parsed.merchant_name)
-        if category and category.tax_treatment == HOME_OFFICE_TAX_TREATMENT:
-            # Home-office % is scoped to the tax year the transaction actually falls
-            # in — not "whatever the setting is right now" — so backfilling an old
-            # statement after changing this year's setup still gets that year's
-            # figure. See models/annual_tax_profile.py.
-            annual_profile = load_annual_tax_profile(db, user.user_id, str(transaction_date.year))
-            if annual_profile and annual_profile.has_home_office:
-                record.deductibility_percentage = annual_profile.home_office_percentage
 
     db.add(record)
     db.flush()  # assigns record.transaction_id, needed by sync_asset_for_transaction

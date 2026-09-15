@@ -99,18 +99,29 @@ def load_categorized_transactions(db: Session, user: User, tax_year: str) -> lis
         for c in db.query(Category).filter(Category.category_id.in_(category_ids)).all()
     } if category_ids else {}
 
+    annual_profile = load_annual_tax_profile(db, user.user_id, tax_year)
+
     result = []
     for tx in transactions:
         effective_category_id = tx.user_category_id or tx.ai_category_id
         category = categories_by_id.get(effective_category_id)
+        
+        tax_treatment = tx.tax_treatment
+        if tax_treatment == "100_percent_deductible_home_office":
+            if annual_profile and annual_profile.has_home_office:
+                deductibility = annual_profile.home_office_percentage
+            else:
+                deductibility = 100.0
+        else:
+            deductibility = getattr(tx, "deductibility_percentage", 100.0) or 100.0
+
         result.append(CategorizedTransaction(
             amount=tx.amount,
             classification=category.classification if category else "Unknown",
             category_slug=category.developer_slug if category else None,
-            tax_treatment=tx.tax_treatment,
-            deductibility_percentage=getattr(tx, "deductibility_percentage", 100.0) or 100.0,
+            tax_treatment=tax_treatment,
+            deductibility_percentage=deductibility,
         ))
-    annual_profile = load_annual_tax_profile(db, user.user_id, tax_year)
     result.extend(_rent_categorized_transactions(annual_profile))
     return result
 
