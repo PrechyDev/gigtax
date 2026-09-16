@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
-import { computeTax, downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
-import { getFilingGuidance } from '../api/filingGuidance'
+import { downloadReport, getTaxComputation, type CategoryAmountItem } from '../api/tax'
+import { getFilingGuidance, type FilingGuidance } from '../api/filingGuidance'
 import { getAnnualTaxProfile, updateAnnualTaxProfile, type AnnualTaxProfileInput } from '../api/annualTaxProfile'
 import { useAuth } from '../context/AuthContext'
 import { AppShell } from '../components/layout/AppShell'
@@ -11,14 +11,10 @@ import { ErrorBanner, SuccessBanner } from '../components/ui/Banner'
 import { PageSpinner } from '../components/ui/Spinner'
 import { YearSelector } from '../components/ui/YearSelector'
 import { ApiError } from '../lib/apiClient'
-import { formatDateTime, formatNaira } from '../lib/formatters'
+import { formatNaira } from '../lib/formatters'
 
 export function ReportsPage() {
   const { user } = useAuth()
-  const queryClient = useQueryClient()
-  // Defaults to the real current year, not the profile's Tax Year field — see the same
-  // note on DashboardPage.tsx. The selector below is how a prior year's report is
-  // reached on purpose instead.
   const [taxYear, setTaxYear] = useState(() => String(new Date().getFullYear()))
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -34,18 +30,11 @@ export function ReportsPage() {
     queryFn: () => getFilingGuidance(user?.state_residence ?? undefined),
   })
 
-  // Shares its cache/network request with RentHomeOfficePanel below (same query key) —
-  // fetched here too just to drive the "Paying rent?" hint on the Statutory Reliefs row.
   const annualProfileQuery = useQuery({
     queryKey: ['annual-tax-profile', taxYear],
     queryFn: () => getAnnualTaxProfile(taxYear),
   })
 
-  const computeMutation = useMutation({
-    mutationFn: () => computeTax(taxYear),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tax-computation', taxYear] }),
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Could not compute your tax liability.'),
-  })
 
   async function handleDownload() {
     setError(null)
@@ -65,136 +54,145 @@ export function ReportsPage() {
     }
   }
 
-  const notComputedYet = computationQuery.isError && computationQuery.error instanceof ApiError && computationQuery.error.status === 404
 
   return (
-    <AppShell title="Annual Tax Report">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <p className="text-on-surface-variant">Fiscal Year {taxYear} — Self-Assessment Summary</p>
-          <YearSelector value={taxYear} onChange={setTaxYear} />
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" isLoading={computeMutation.isPending} onClick={() => computeMutation.mutate()}>
-            Recompute
-          </Button>
-          <Button
-            isLoading={isDownloading}
-            disabled={!computationQuery.data}
-            onClick={handleDownload}
-          >
-            Download Report
-          </Button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4">
-          <ErrorBanner message={error} />
-        </div>
-      )}
-
-      <div className="mb-6">
-        <RentHomeOfficePanel taxYear={taxYear} />
-      </div>
-
-      {computationQuery.isLoading && <PageSpinner />}
-
-      {notComputedYet && (
-        <div className="rounded-lg bg-surface-container-lowest p-8 text-center shadow-level-1">
-          <p className="mb-4 text-on-surface-variant">
-            No computation yet for {taxYear} — run it against your currently approved transactions.
-          </p>
-          <Button isLoading={computeMutation.isPending} onClick={() => computeMutation.mutate()}>
-            Compute Tax Now
-          </Button>
-        </div>
-      )}
-
-      {computationQuery.isError && !notComputedYet && (
-        <ErrorBanner
-          message={computationQuery.error instanceof ApiError ? computationQuery.error.message : 'Could not load your tax computation.'}
-          onRetry={() => computationQuery.refetch()}
-        />
-      )}
-
-      {computationQuery.data && (
-        <div className="space-y-6">
-          {computationQuery.data.minimum_wage_exempt && (
-            <div className="flex items-center gap-3 rounded-lg bg-emerald/10 p-4 text-emerald-dark">
-              <span className="material-symbols-outlined shrink-0">verified</span>
-              Total income is at or below the National Minimum Wage — fully exempt from tax this year.
-            </div>
-          )}
-
-          <div className="overflow-hidden rounded-lg bg-surface-container-lowest shadow-level-1">
-            <h3 className="border-b border-outline-variant bg-navy px-6 py-3 text-sm font-semibold text-white">
-              Tax Summary
-            </h3>
-            <BreakdownRow label="Total Income" value={computationQuery.data.total_income} items={computationQuery.data.income_items} />
-            <BreakdownRow
-              label="Allowable Deductions"
-              value={-computationQuery.data.total_deductions}
-              items={computationQuery.data.deduction_items}
-            />
-            <BreakdownRow
-              label="Capital Allowances"
-              value={-computationQuery.data.total_capital_allowances}
-              items={computationQuery.data.capital_allowance_items}
-            />
-            <BreakdownRow
-              label="Statutory Reliefs"
-              value={-computationQuery.data.total_reliefs}
-              items={computationQuery.data.relief_items}
-              emptyHint={
-                !annualProfileQuery.data?.annual_rent_paid ? (
-                  <>
-                    Paying rent?{' '}
-                    <a href="#rent-home-office" className="text-blue hover:underline">
-                      Add it above
-                    </a>{' '}
-                    to claim rent relief automatically for {taxYear}.
-                  </>
-                ) : undefined
-              }
-            />
-            <SummaryRow label="Taxable Income" value={computationQuery.data.taxable_income} bold />
-            <SummaryRow label="Net Tax Payable" value={computationQuery.data.estimated_tax_owed} bold last highlight />
+    <AppShell title="Self-assessment report">
+      <div className="mx-auto flex max-w-[800px] flex-col gap-4">
+        
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="m-0 mb-1 text-xl font-semibold text-navy">Self-assessment report</h3>
           </div>
-
-          {computationQuery.data.band_breakdown.length > 0 && (
-            <div className="rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
-              <h3 className="mb-4 font-semibold text-navy">Band-by-band computation</h3>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs font-semibold uppercase text-on-surface-variant">
-                    <th className="pb-2">Rate</th>
-                    <th className="pb-2 tabular-nums">Amount in Band</th>
-                    <th className="pb-2 tabular-nums">Tax</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {computationQuery.data.band_breakdown.map((band, i) => (
-                    <tr key={i} className="border-t border-outline-variant">
-                      <td className="py-2">{(band.rate * 100).toFixed(0)}%</td>
-                      <td className="py-2 tabular-nums">{formatNaira(band.amount_in_band)}</td>
-                      <td className="py-2 tabular-nums">{formatNaira(band.tax)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <FilingGuidancePanel guidance={filingGuidanceQuery.data} isLoading={filingGuidanceQuery.isLoading} />
-
-          {computationQuery.data.last_updated && (
-            <p className="text-xs text-on-surface-variant">
-              Last computed: {formatDateTime(computationQuery.data.last_updated)}
-            </p>
-          )}
+          <div className="flex items-center gap-2">
+            <YearSelector value={taxYear} onChange={setTaxYear} />
+            <Button
+              isLoading={isDownloading}
+              disabled={!computationQuery.data}
+              onClick={handleDownload}
+            >
+              <span className="material-symbols-outlined -ml-1 mr-1 text-[15px]">download</span>
+              Download PDF
+            </Button>
+          </div>
         </div>
-      )}
+
+        {error && (
+          <div className="mb-2">
+            <ErrorBanner message={error} />
+          </div>
+        )}
+
+        <RentHomeOfficePanel taxYear={taxYear} />
+
+        {computationQuery.isLoading && <PageSpinner />}
+
+        {computationQuery.isError && (
+          <ErrorBanner
+            message={computationQuery.error instanceof ApiError ? computationQuery.error.message : 'Could not load your tax computation.'}
+            onRetry={() => computationQuery.refetch()}
+          />
+        )}
+
+        {computationQuery.data && (
+          <>
+            {computationQuery.data.minimum_wage_exempt && (
+              <div className="flex items-center gap-3 rounded-lg bg-emerald/10 p-4 text-sm text-emerald-dark border border-emerald/20">
+                <span className="material-symbols-outlined shrink-0 text-lg">verified</span>
+                Total income is at or below the National Minimum Wage — fully exempt from tax this year.
+              </div>
+            )}
+
+            <div className="overflow-hidden rounded-lg border border-divider bg-surface shadow-sm">
+              <div className="p-3">
+                <span className="text-[15px] font-semibold text-navy">Summary</span>
+                <p className="m-0 mt-1 text-[12px] text-on-surface-variant">Tap a line to see how it breaks down by category</p>
+              </div>
+
+              <div className="border-t border-divider">
+                <BreakdownRow label="Total Income" section="Sixth Schedule" value={computationQuery.data.total_income} items={computationQuery.data.income_items} />
+              </div>
+              <div className="border-t border-divider">
+                <BreakdownRow
+                  label="Allowable Deductions"
+                  section="S.20 PITA"
+                  value={-computationQuery.data.total_deductions}
+                  items={computationQuery.data.deduction_items}
+                />
+              </div>
+              <div className="border-t border-divider">
+                <BreakdownRow
+                  label="Capital Allowances"
+                  section="Fifth Schedule"
+                  value={-computationQuery.data.total_capital_allowances}
+                  items={computationQuery.data.capital_allowance_items}
+                />
+              </div>
+              <div className="border-t border-divider">
+                <BreakdownRow
+                  label="Statutory Reliefs"
+                  section="S.33 PITA"
+                  value={-computationQuery.data.total_reliefs}
+                  items={computationQuery.data.relief_items}
+                  emptyHint={
+                    !annualProfileQuery.data?.annual_rent_paid ? (
+                      <>
+                        Paying rent? Add it above to claim rent relief automatically for {taxYear}.
+                      </>
+                    ) : undefined
+                  }
+                />
+              </div>
+
+              <div className="flex justify-between border-t border-divider p-3 text-[13px]">
+                <span>Chargeable income</span>
+                <span className="tabular-nums font-semibold text-navy">{formatNaira(computationQuery.data.taxable_income)}</span>
+              </div>
+              <div className="flex justify-between border-t border-divider bg-accent/5 p-3 text-[14px]">
+                <span className="font-semibold text-navy">Net tax payable</span>
+                <span className="tabular-nums font-bold text-navy">{formatNaira(computationQuery.data.estimated_tax_owed)}</span>
+              </div>
+            </div>
+
+            <FilingGuidancePanel guidance={filingGuidanceQuery.data} isLoading={filingGuidanceQuery.isLoading} state={user?.state_residence} />
+
+            {computationQuery.data.band_breakdown.length > 0 && (
+              <div className="overflow-hidden rounded-lg border border-divider bg-surface shadow-sm">
+                <div className="p-3">
+                  <span className="text-[15px] font-semibold text-navy">Tax bands</span>
+                  <p className="m-0 mt-1 text-[12px] text-on-surface-variant">
+                    How your chargeable income was taxed, band by band
+                  </p>
+                </div>
+                <div className="border-t border-divider px-3 pb-3">
+                  <table className="w-full text-left text-[13px]">
+                    <thead>
+                      <tr className="border-b border-divider">
+                        <th className="py-2 font-medium text-on-surface-variant">Rate</th>
+                        <th className="py-2 font-medium text-on-surface-variant tabular-nums text-right">Amount in band</th>
+                        <th className="py-2 font-medium text-on-surface-variant tabular-nums text-right">Tax</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {computationQuery.data.band_breakdown.map((band, i) => (
+                        <tr key={i} className="border-b border-divider/50 last:border-none">
+                          <td className="py-2 text-on-surface-variant">{(band.rate * 100).toFixed(0)}%</td>
+                          <td className="py-2 text-right text-on-surface-variant tabular-nums">{formatNaira(band.amount_in_band)}</td>
+                          <td className="py-2 text-right text-on-surface-variant tabular-nums">{formatNaira(band.tax)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <p className="m-0 text-[12px] text-on-surface-variant">
+              This is a self-assessment estimate generated by GigTax based on the transactions you reviewed and
+              approved. It is not a substitute for professional tax advice.
+            </p>
+          </>
+        )}
+      </div>
     </AppShell>
   )
 }
@@ -207,8 +205,6 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
     queryKey: ['annual-tax-profile', taxYear],
     queryFn: () => getAnnualTaxProfile(taxYear),
   })
-  // Fetched purely to power the "copy last year's numbers" shortcut below — cheap,
-  // and avoids the user having to remember and retype the same rent figure every year.
   const previousProfileQuery = useQuery({
     queryKey: ['annual-tax-profile', previousYear],
     queryFn: () => getAnnualTaxProfile(previousYear),
@@ -221,6 +217,7 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
   }>({ annual_rent_paid: '', has_home_office: false, home_office_percentage: 0 })
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -238,6 +235,8 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
     mutationFn: (input: AnnualTaxProfileInput) => updateAnnualTaxProfile(taxYear, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['annual-tax-profile', taxYear] })
+      queryClient.invalidateQueries({ queryKey: ['tax-computation', taxYear] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       setSuccess(true)
       setError(null)
     },
@@ -254,13 +253,16 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
     })
   }
 
-  function copyFromPreviousYear() {
+  function copyFromPreviousYear(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
     if (!previousProfileQuery.data) return
     setForm({
       annual_rent_paid: previousProfileQuery.data.annual_rent_paid ?? '',
       has_home_office: previousProfileQuery.data.has_home_office,
       home_office_percentage: previousProfileQuery.data.home_office_percentage,
     })
+    setIsOpen(true)
   }
 
   if (profileQuery.isLoading) return null
@@ -272,82 +274,93 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
     (previousProfileQuery.data.annual_rent_paid !== null || previousProfileQuery.data.has_home_office)
 
   return (
-    <div id="rent-home-office" className="scroll-mt-6 rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-navy">Rent &amp; Home Office — {taxYear}</h3>
+    <div className="overflow-hidden rounded-lg border border-divider bg-surface shadow-sm">
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-3 text-left font-inherit text-inherit"
+      >
+        <span className="material-symbols-outlined shrink-0 text-base text-on-surface-variant transition-transform" style={{ transform: isOpen ? 'rotate(90deg)' : 'none' }}>
+          chevron_right
+        </span>
+        <span className="flex-1 font-heading text-[15px] font-semibold">Rent and home office</span>
         {isBlank && previousHasData && (
-          <button type="button" onClick={copyFromPreviousYear} className="text-sm text-blue hover:underline">
+          <span onClick={copyFromPreviousYear} className="text-xs text-accent hover:underline">
             Copy {previousYear}'s numbers
-          </button>
+          </span>
         )}
-      </div>
-      <p className="mb-4 text-sm text-on-surface-variant">
-        Rent, and how much of your home you use for work, can change year to year — this is set for {taxYear}{' '}
-        specifically and won't affect any other year.
-      </p>
+      </button>
 
-      {error && (
-        <div className="mb-3">
-          <ErrorBanner message={error} onDismiss={() => setError(null)} />
-        </div>
-      )}
-      {success && (
-        <div className="mb-3">
-          <SuccessBanner
-            message={`Saved for ${taxYear} — click Recompute above to refresh your tax summary.`}
-            onDismiss={() => setSuccess(false)}
-          />
-        </div>
-      )}
+      {isOpen && (
+        <div className="px-3 pb-3">
+          <p className="m-0 mb-3 text-[12px] text-on-surface-variant">
+            Rent, and how much of your home you use for work, can change year to year — this is set for {taxYear} specifically and won't affect any other year.
+          </p>
 
-      <form onSubmit={handleSave} className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm font-semibold text-on-surface-variant">Annual Rent Paid (NGN)</label>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.annual_rent_paid}
-            onChange={(e) =>
-              setForm({ ...form, annual_rent_paid: e.target.value === '' ? '' : Number(e.target.value) })
-            }
-            className="h-11 w-full max-w-xs rounded-lg border border-outline-variant px-3 text-sm focus:border-blue focus:outline-none focus:ring-1 focus:ring-blue"
-          />
-        </div>
-
-        <div className="rounded-lg border border-outline-variant p-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.has_home_office}
-              onChange={(e) => setForm({ ...form, has_home_office: e.target.checked })}
-            />
-            <span className="text-sm font-semibold">Home Office Deduction</span>
-          </label>
-          {form.has_home_office && (
-            <div className="mt-3">
-              <label className="mb-1 block text-sm text-on-surface-variant">
-                {form.home_office_percentage}% of your rent counts as a home-office business expense
-              </label>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={form.home_office_percentage}
-                onChange={(e) => setForm({ ...form, home_office_percentage: Number(e.target.value) })}
-                className="w-full"
-              />
-              <p className="mt-1 text-xs text-emerald-dark">
-                The rest of your rent still counts toward your rent relief (20%, capped at ₦500,000).
-              </p>
+          {error && (
+            <div className="mb-2">
+              <ErrorBanner message={error} onDismiss={() => setError(null)} />
             </div>
           )}
-        </div>
+          {success && (
+            <div className="mb-2">
+              <SuccessBanner
+                message={`Saved for ${taxYear} — your tax summary has been updated.`}
+                onDismiss={() => setSuccess(false)}
+              />
+            </div>
+          )}
 
-        <Button type="submit" isLoading={mutation.isPending}>
-          Save for {taxYear}
-        </Button>
-      </form>
+          <form onSubmit={handleSave} className="flex flex-col gap-0">
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium">Annual rent paid (NGN)</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.annual_rent_paid}
+                onChange={(e) =>
+                  setForm({ ...form, annual_rent_paid: e.target.value === '' ? '' : Number(e.target.value) })
+                }
+                className="h-10 w-full max-w-[300px] rounded-md border border-outline-variant bg-transparent px-3 text-sm focus:border-accent focus:outline-none"
+              />
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-[13px]">
+              <input
+                type="checkbox"
+                checked={form.has_home_office}
+                onChange={(e) => setForm({ ...form, has_home_office: e.target.checked })}
+              />
+              I use part of my home for work
+            </label>
+
+            {form.has_home_office && (
+              <div className="mt-2 flex flex-col gap-1">
+                <label className="text-sm">Home office share ({form.home_office_percentage}%)</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={form.home_office_percentage}
+                  onChange={(e) => setForm({ ...form, home_office_percentage: Number(e.target.value) })}
+                  className="w-full max-w-[300px]"
+                />
+              </div>
+            )}
+            
+            {!form.has_home_office && (
+              <p className="m-0 mt-2 text-[12px] text-on-surface-variant max-w-lg">
+                If you work from home, this deducts the portion of your rent selected as business expenses and deducts that share of your utility bills as well.
+              </p>
+            )}
+
+            <Button type="submit" isLoading={mutation.isPending} className="mt-3 self-start">
+              Save for {taxYear}
+            </Button>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
@@ -355,130 +368,131 @@ function RentHomeOfficePanel({ taxYear }: { taxYear: string }) {
 function FilingGuidancePanel({
   guidance,
   isLoading,
+  state,
 }: {
-  guidance?: {
-    state: string | null
-    portal_name: string | null
-    portal_url: string | null
-    note: string
-    guide_markdown: string | null
-  }
+  guidance?: FilingGuidance
   isLoading: boolean
+  state: string | null | undefined
 }) {
   const [guideOpen, setGuideOpen] = useState(false)
 
   if (isLoading) return null
-  if (!guidance) return null
+
+  const displayState = guidance?.state || state || 'your state'
+  const fallbackSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${displayState} Internal Revenue Service tax filing portal`)}`
+  const portalUrl = guidance?.portal_url || fallbackSearchUrl
+  const portalLabel = guidance?.portal_name ? `Go to ${guidance.portal_name}` : `Go to ${displayState} portal`
 
   return (
-    <div className="rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="material-symbols-outlined text-blue">gavel</span>
-        <h3 className="font-semibold text-navy">Filing Guidance{guidance.state ? ` — ${guidance.state}` : ''}</h3>
-      </div>
-      {guidance.portal_name && (
-        <p className="mb-1 text-sm font-medium text-on-surface">{guidance.portal_name}</p>
-      )}
-      <p className="mb-3 text-sm text-on-surface-variant">{guidance.note}</p>
-      {guidance.portal_url && (
-        <a
-          href={guidance.portal_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-dark"
-        >
-          Go to {guidance.portal_name ?? 'portal'}
-          <span className="material-symbols-outlined text-base">open_in_new</span>
-        </a>
-      )}
-      {guidance.guide_markdown && (
-        <div className="mt-4 border-t border-outline-variant pt-3">
-          <button
-            onClick={() => setGuideOpen((v) => !v)}
-            className="flex w-full items-center justify-between text-sm font-semibold text-blue hover:underline"
-          >
-            {guideOpen ? 'Hide full filing walkthrough' : 'Show full filing walkthrough'}
-            <span className="material-symbols-outlined text-base">{guideOpen ? 'expand_less' : 'expand_more'}</span>
-          </button>
-          {guideOpen && (
-            <div className="markdown-content filing-guide-content mt-3 max-h-[32rem] overflow-y-auto text-sm">
-              <ReactMarkdown>{guidance.guide_markdown}</ReactMarkdown>
+    <div className="flex flex-col gap-3 rounded-xl border border-divider bg-surface p-5 shadow-sm mt-4">
+      <span className="text-[15px] font-semibold text-on-surface">Filing guidance for {displayState}</span>
+      <p className="m-0 text-[13px] text-on-surface-variant">
+        {guidance?.note ??
+          'GigTax does not file on your behalf. Once you are happy with this report, take it to your State Internal Revenue Service to complete your filing.'}
+      </p>
+
+      {guideOpen && (
+        <div className="markdown-content filing-guide-content text-[13px] text-on-surface-variant leading-[1.6]">
+          {guidance?.guide_markdown ? (
+            <ReactMarkdown>{guidance.guide_markdown}</ReactMarkdown>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="m-0"><strong>1. Register or confirm your Tax Identification Number (TIN).</strong> Most State Internal Revenue Services let you self-register online, or you can visit a tax office in person with a valid ID.</p>
+              <p className="m-0"><strong>2. Download this self-assessment report.</strong> It shows your income, deductions, capital allowances, reliefs and the net tax payable, with the section of the Nigeria Tax Act 2025 behind each figure.</p>
+              <p className="m-0"><strong>3. Submit it through your state's Direct Assessment filing channel.</strong> Some states accept this online, others ask you to bring a printed copy. Search below to find out which applies to {displayState}.</p>
+              <p className="m-0"><strong>4. Pay before the deadline shown on your assessment.</strong> Keep the payment receipt together with this report as your record.</p>
+              <p className="m-0 text-on-surface-variant/60">Portal addresses change from time to time, so we point you to search for the current one rather than link a fixed address that can go stale.</p>
             </div>
           )}
         </div>
       )}
-    </div>
-  )
-}
 
-function SummaryRow({
-  label,
-  value,
-  bold,
-  last,
-  highlight,
-}: {
-  label: string
-  value: number
-  bold?: boolean
-  last?: boolean
-  highlight?: boolean
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between px-6 py-4 ${!last ? 'border-b border-outline-variant' : ''} ${
-        highlight ? 'bg-blue/5' : ''
-      }`}
-    >
-      <span className={bold ? 'font-semibold text-navy' : 'text-on-surface-variant'}>{label}</span>
-      <span className={`tabular-nums ${bold ? 'text-lg font-bold text-navy' : ''}`}>{formatNaira(value)}</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setGuideOpen((v) => !v)}
+          className="rounded-md border border-outline-variant bg-transparent px-4 py-2 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-low"
+        >
+          {guideOpen ? 'Hide full guide' : 'Read the full guide'}
+        </button>
+        <a
+          href={portalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg transition-colors hover:opacity-90"
+        >
+          <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+          {portalLabel}
+        </a>
+      </div>
     </div>
   )
 }
 
 function BreakdownRow({
   label,
+  section,
   value,
   items,
   emptyHint,
 }: {
   label: string
+  section: string
   value: number
   items: CategoryAmountItem[]
   emptyHint?: ReactNode
 }) {
+  const [isOpen, setIsOpen] = useState(false)
+
   return (
-    <details className="group border-b border-outline-variant">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2 text-on-surface-variant">
-          <span className="material-symbols-outlined text-lg transition-transform group-open:rotate-90">
-            chevron_right
-          </span>
-          {label}
+    <div>
+      <button 
+        onClick={() => setIsOpen(!isOpen)} 
+        className="flex w-full cursor-pointer items-center gap-2 border-none bg-transparent p-3 text-left font-inherit text-inherit"
+      >
+        <span className="material-symbols-outlined shrink-0 text-base text-on-surface-variant transition-transform" style={{ transform: isOpen ? 'rotate(90deg)' : 'none' }}>
+          chevron_right
         </span>
-        <span className="tabular-nums">{formatNaira(value)}</span>
-      </summary>
-      <div className="px-6 pb-4 pl-11">
-        {items.length > 0 ? (
-          <ul className="space-y-1.5 text-sm text-on-surface-variant">
-            {items.map((item) => (
-              <li key={item.category_name} className="flex items-center justify-between gap-3">
-                <span>
-                  {item.category_name}
-                  {item.rate != null && item.rate < 100 && (
-                    <span className="ml-2 rounded bg-blue/10 px-1.5 py-0.5 text-xs font-medium text-blue">
-                      {item.rate.toFixed(0)}% of {formatNaira(item.gross_amount ?? item.amount)}
-                    </span>
-                  )}
-                </span>
-                <span className="tabular-nums">{formatNaira(item.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm italic text-on-surface-variant">{emptyHint ?? 'Nothing in this category.'}</p>
-        )}
-      </div>
-    </details>
+        <span className="flex-1 text-[13px]">
+          {label} <span className="text-[11px] text-on-surface-variant/70">{section}</span>
+        </span>
+        <span className="tabular-nums text-[13px] font-semibold">{formatNaira(value)}</span>
+      </button>
+      
+      {isOpen && (
+        <div className="px-3 pb-3">
+          <table className="w-full text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-divider">
+                <th className="pb-1 font-medium text-on-surface-variant">Category</th>
+                <th className="pb-1 font-medium text-on-surface-variant tabular-nums text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length > 0 ? (
+                items.map((item) => (
+                  <tr key={item.category_name} className="border-b border-divider/50 last:border-none">
+                    <td className="py-2 text-on-surface-variant">
+                      {item.category_name}
+                      {item.rate != null && item.rate < 100 && (
+                        <span className="ml-2 rounded bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent">
+                          {item.rate.toFixed(0)}% of {formatNaira(item.gross_amount ?? item.amount)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right text-on-surface-variant tabular-nums">{formatNaira(item.amount)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={2} className="py-2 italic text-on-surface-variant">
+                    {emptyHint ?? 'Nothing in this category.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }

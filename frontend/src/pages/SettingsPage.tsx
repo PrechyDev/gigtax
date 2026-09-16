@@ -1,84 +1,41 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { updateMe } from '../api/auth'
 import { getGoogleDriveConnectUrl } from '../api/drive'
 import { listCategories, type Category } from '../api/categories'
 import { createCustomRule, deleteCustomRule, listCustomRules } from '../api/customRules'
 import { classificationLabel } from '../lib/categoryLabels'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { AppShell } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { ErrorBanner, SuccessBanner } from '../components/ui/Banner'
-import { EmptyState } from '../components/ui/EmptyState'
 import { PageSpinner, Spinner } from '../components/ui/Spinner'
 import { SelectField, TextField } from '../components/ui/FormField'
 import { NIGERIA_STATES } from '../lib/nigeriaStates'
 import { ApiError } from '../lib/apiClient'
 
-type Tab = 'profile' | 'integrations' | 'rules'
-
 export function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('profile')
-  const [searchParams] = useSearchParams()
-  const [driveSuccess, setDriveSuccess] = useState(false)
-  const [driveError, setDriveError] = useState(false)
-
-  useEffect(() => {
-    if (searchParams.get('drive') === 'connected') {
-      setDriveSuccess(true)
-      setTab('integrations')
-    } else if (searchParams.get('drive') === 'error') {
-      setDriveError(true)
-      setTab('integrations')
-    }
-  }, [searchParams])
-
-  const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: 'profile', label: 'Profile Details', icon: 'person' },
-    { id: 'integrations', label: 'Integrations', icon: 'cloud' },
-    { id: 'rules', label: 'AI Custom Rules', icon: 'rule' },
-  ]
-
   return (
-    <AppShell title="Settings & Integrations">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
-        <nav className="md:col-span-3">
-          <ul className="space-y-1">
-            {TABS.map((t) => (
-              <li key={t.id}>
-                <button
-                  onClick={() => setTab(t.id)}
-                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium ${
-                    tab === t.id ? 'bg-blue/10 text-blue-dark' : 'text-on-surface-variant hover:bg-surface-container-low'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">{t.icon}</span>
-                  {t.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="md:col-span-9">
-          {tab === 'profile' && <ProfileTab />}
-          {tab === 'integrations' && (
-            <IntegrationsTab
-              showSuccess={driveSuccess}
-              onDismissSuccess={() => setDriveSuccess(false)}
-              showError={driveError}
-              onDismissError={() => setDriveError(false)}
-            />
-          )}
-          {tab === 'rules' && <RulesTab />}
+    <AppShell title="Settings">
+      <div className="mx-auto flex max-w-[620px] flex-col gap-6">
+        <div>
+          <h3 className="mb-1 text-xl font-semibold text-navy">Settings</h3>
         </div>
+
+        <ProfileSection />
+        <IntegrationsSection />
+        <RulesSection />
+        <AppearanceSection />
+
+        <LogoutSection />
       </div>
     </AppShell>
   )
 }
 
-function ProfileTab() {
+function ProfileSection() {
   const { user, refreshUser } = useAuth()
   const [form, setForm] = useState({
     name: user?.name ?? '',
@@ -107,27 +64,16 @@ function ProfileTab() {
   }
 
   return (
-    <div className="rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
-      <h3 className="mb-4 font-semibold text-navy">Legal & Tax Information</h3>
-      {error && (
-        <div className="mb-4">
-          <ErrorBanner message={error} />
-        </div>
-      )}
-      {success && (
-        <div className="mb-4">
-          <SuccessBanner message="Profile updated successfully." onDismiss={() => setSuccess(false)} />
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <TextField label="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <TextField
-          label="Tax Identification Number (TIN)"
-          value={form.tin}
-          onChange={(e) => setForm({ ...form, tin: e.target.value })}
-        />
+    <div className="flex flex-col gap-3">
+      <h6 className="m-0 text-sm font-semibold text-on-surface-variant">Profile</h6>
+      
+      {error && <ErrorBanner message={error} />}
+      {success && <SuccessBanner message="Profile updated successfully." onDismiss={() => setSuccess(false)} />}
+      
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <TextField label="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <SelectField
-          label="State of Residence"
+          label="State of residence"
           value={form.state_residence}
           onChange={(e) => setForm({ ...form, state_residence: e.target.value })}
         >
@@ -139,25 +85,23 @@ function ProfileTab() {
           ))}
         </SelectField>
         <TextField
-          label="Occupation"
+          label="Primary occupation"
           value={form.occupation_type}
           onChange={(e) => setForm({ ...form, occupation_type: e.target.value })}
         />
         <TextField
-          label="Tax Year"
+          label="Tax Identification Number (TIN)"
+          value={form.tin}
+          onChange={(e) => setForm({ ...form, tin: e.target.value })}
+        />
+        <TextField
+          label="Tax year"
           value={form.tax_year}
           maxLength={4}
           onChange={(e) => setForm({ ...form, tax_year: e.target.value })}
         />
-        <p className="-mt-3 text-xs text-on-surface-variant">
-          Rent paid and home-office claims are set per tax year now, on the{' '}
-          <Link to="/reports" className="text-blue hover:underline">
-            Reports page
-          </Link>{' '}
-          next to the year you're viewing — they change year to year.
-        </p>
 
-        <Button type="submit" isLoading={mutation.isPending}>
+        <Button type="submit" isLoading={mutation.isPending} className="self-start">
           Save Changes
         </Button>
       </form>
@@ -165,55 +109,67 @@ function ProfileTab() {
   )
 }
 
-function IntegrationsTab({
-  showSuccess,
-  onDismissSuccess,
-  showError,
-  onDismissError,
-}: {
-  showSuccess: boolean
-  onDismissSuccess: () => void
-  showError: boolean
-  onDismissError: () => void
-}) {
+const ONBOARDING_RESUME_FLAG = 'gigtax-onboarding-resume'
+
+function IntegrationsSection() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [driveSuccess, setDriveSuccess] = useState(false)
+  const [driveError, setDriveError] = useState(false)
+
+  useEffect(() => {
+    const driveResult = searchParams.get('drive')
+    if (!driveResult) return
+
+    if (localStorage.getItem(ONBOARDING_RESUME_FLAG)) {
+      localStorage.removeItem(ONBOARDING_RESUME_FLAG)
+      navigate(`/onboarding?resumeStep=3&drive=${driveResult}`, { replace: true })
+      return
+    }
+
+    if (driveResult === 'connected') {
+      setDriveSuccess(true)
+    } else if (driveResult === 'error') {
+      setDriveError(true)
+    }
+  }, [searchParams, navigate])
 
   return (
-    <div className="rounded-lg bg-surface-container-lowest p-6 shadow-level-1">
-      <h3 className="mb-1 font-semibold text-navy">Bring Your Own Storage (BYOS)</h3>
-      <p className="mb-4 text-sm text-on-surface-variant">
-        Receipts and documents are stored in your own Google Drive, not on our servers — you stay in control.
-      </p>
-      {showSuccess && (
-        <div className="mb-4">
-          <SuccessBanner message="Google Drive connected successfully." onDismiss={onDismissSuccess} />
+    <div className="flex flex-col gap-2">
+      <h6 className="m-0 text-sm font-semibold text-on-surface-variant">Storage</h6>
+      
+      {driveSuccess && (
+        <div className="mb-2">
+          <SuccessBanner message="Google Drive connected successfully." onDismiss={() => setDriveSuccess(false)} />
         </div>
       )}
-      {showError && (
-        <div className="mb-4">
+      {driveError && (
+        <div className="mb-2">
           <ErrorBanner
             message="Could not connect to Google Drive. Please try again."
-            onDismiss={onDismissError}
+            onDismiss={() => setDriveError(false)}
           />
         </div>
       )}
-      <div className="flex items-center justify-between rounded-lg border border-outline-variant p-4">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-2xl text-blue">cloud</span>
-          <div>
-            <p className="font-medium">Google Drive</p>
-            <p className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-              <span
-                className={`h-2 w-2 rounded-full ${user?.google_drive_connected ? 'bg-emerald' : 'bg-outline'}`}
-              />
-              {user?.google_drive_connected ? 'Connected' : 'Not Connected'}
-            </p>
-          </div>
+
+      <div className="flex flex-row items-center gap-3 rounded-lg border border-divider bg-surface p-4 shadow-sm">
+        <span className="material-symbols-outlined shrink-0 text-xl text-accent">cloud</span>
+        <div className="flex-1">
+          <p className="m-0 text-sm font-semibold">Google Drive</p>
+          <p className="m-0 flex items-center gap-1.5 text-xs text-on-surface-variant">
+            <span
+              className={`h-2 w-2 rounded-full ${user?.google_drive_connected ? 'bg-emerald' : 'bg-outline'}`}
+            />
+            {user?.google_drive_connected ? 'Connected' : 'Not Connected'}
+          </p>
         </div>
-        {!user?.google_drive_connected && (
+        {!user?.google_drive_connected ? (
           <a href={getGoogleDriveConnectUrl()}>
-            <Button>Connect Drive</Button>
+            <Button variant="secondary">Connect Drive</Button>
           </a>
+        ) : (
+          <Button variant="secondary" disabled>Connected</Button>
         )}
       </div>
     </div>
@@ -222,7 +178,7 @@ function IntegrationsTab({
 
 type RuleMode = 'category' | 'freeform'
 
-function RulesTab() {
+function RulesSection() {
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<RuleMode>('category')
   const [pattern, setPattern] = useState('')
@@ -234,6 +190,7 @@ function RulesTab() {
   const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
 
   const groupedCategories = (categoriesQuery.data ?? []).reduce<Record<string, Category[]>>((groups, c) => {
+    // Only grouping expenses for the UI as per the redesign spec or general groupings
     const label = classificationLabel(c.classification)
     groups[label] = [...(groups[label] ?? []), c]
     return groups
@@ -270,110 +227,170 @@ function RulesTab() {
   }
 
   return (
-    <div className="rounded-lg border-l-4 border-blue bg-surface-container-lowest p-6 shadow-level-1">
-      <h3 className="mb-1 font-semibold text-navy">AI Custom Rules</h3>
-      <p className="mb-4 text-sm text-on-surface-variant">
-        Teach the AI to automatically categorize recurring transactions — map a keyword straight to a category, or
-        describe in your own words what should happen (e.g. "these are personal transfers between my own
-        accounts, not business income or expenses").
+    <div className="flex flex-col gap-2">
+      <h6 className="m-0 text-sm font-semibold text-on-surface-variant">Custom rules</h6>
+      <p className="m-0 text-xs text-on-surface-variant">
+        When a description contains this keyword, apply this category automatically next time it shows up.
       </p>
 
       {error && (
-        <div className="mb-4">
+        <div className="mb-2">
           <ErrorBanner message={error} onDismiss={() => setError(null)} />
         </div>
       )}
 
-      {rulesQuery.isLoading && <PageSpinner />}
-      {rulesQuery.data && rulesQuery.data.length === 0 && (
-        <EmptyState icon="rule" message="No custom rules yet — add one below." />
-      )}
-      {rulesQuery.data && rulesQuery.data.length > 0 && (
-        <ul className="mb-4 space-y-2">
-          {rulesQuery.data.map((rule) => (
-            <li
-              key={rule.rule_id}
-              className="flex items-start justify-between gap-3 rounded-md bg-surface-container-low px-3 py-2 text-sm"
-            >
-              <span className="italic">
-                "{rule.keyword_pattern}"{' '}
-                {rule.assigned_category ? (
-                  <>→ {rule.assigned_category}</>
-                ) : (
-                  <span className="not-italic text-on-surface-variant">— {rule.rule_text}</span>
-                )}
-              </span>
-              <button
-                onClick={() => deleteMutation.mutate(rule.rule_id)}
-                disabled={deleteMutation.isPending}
-                className="shrink-0 text-on-surface-variant hover:text-error"
-                aria-label="Delete rule"
+      <div className="flex flex-col gap-0 rounded-lg border border-divider bg-surface shadow-sm">
+        {rulesQuery.isLoading && <div className="p-4"><PageSpinner /></div>}
+        
+        {rulesQuery.data && rulesQuery.data.length > 0 && (
+          <div>
+            {rulesQuery.data.map((rule) => (
+              <div
+                key={rule.rule_id}
+                className="flex items-center gap-2 border-b border-divider p-3"
               >
-                {deleteMutation.isPending ? <Spinner size={14} /> : <span className="material-symbols-outlined text-lg">close</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="mb-3 flex gap-1 rounded-lg bg-surface-container-low p-1 text-sm">
-        <button
-          type="button"
-          onClick={() => setMode('category')}
-          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
-            mode === 'category' ? 'bg-surface-container-lowest text-blue-dark shadow-level-1' : 'text-on-surface-variant'
-          }`}
-        >
-          Map to a category
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('freeform')}
-          className={`flex-1 rounded-md px-3 py-1.5 font-medium transition-colors ${
-            mode === 'freeform' ? 'bg-surface-container-lowest text-blue-dark shadow-level-1' : 'text-on-surface-variant'
-          }`}
-        >
-          Describe what to do
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <input
-          value={pattern}
-          onChange={(e) => setPattern(e.target.value)}
-          placeholder="Keyword (e.g. 'MTN' or 'internal transfer')"
-          className="h-10 w-full rounded-md border border-outline-variant px-3 text-sm"
-        />
-        {mode === 'category' ? (
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="h-10 w-full rounded-md border border-outline-variant bg-white px-3 text-sm"
-          >
-            <option value="">Select a category...</option>
-            {Object.entries(groupedCategories).map(([label, cats]) => (
-              <optgroup key={label} label={label}>
-                {(cats ?? []).map((c) => (
-                  <option key={c.developer_slug} value={c.developer_slug}>
-                    {c.category_name}
-                  </option>
-                ))}
-              </optgroup>
+                <span className="text-sm font-semibold">"{rule.keyword_pattern}"</span>
+                <span className="material-symbols-outlined shrink-0 text-sm text-on-surface-variant">arrow_forward</span>
+                <span className="flex-1 text-sm">
+                  {rule.assigned_category ? rule.assigned_category : rule.rule_text}
+                </span>
+                <button
+                  onClick={() => deleteMutation.mutate(rule.rule_id)}
+                  disabled={deleteMutation.isPending}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+                  title="Remove rule"
+                  aria-label="Remove rule"
+                >
+                  {deleteMutation.isPending ? <Spinner size={14} /> : <span className="material-symbols-outlined text-sm">close</span>}
+                </button>
+              </div>
             ))}
-          </select>
-        ) : (
-          <textarea
-            value={ruleText}
-            onChange={(e) => setRuleText(e.target.value)}
-            placeholder="e.g. If you see 'internal' or 'for me', this is a personal transaction — do not add it to business income or expenses."
-            rows={3}
-            className="w-full rounded-md border border-outline-variant px-3 py-2 text-sm"
-          />
+          </div>
         )}
-        <Button type="submit" isLoading={createMutation.isPending}>
-          Add Rule
-        </Button>
-      </form>
+
+        {rulesQuery.data && rulesQuery.data.length === 0 && (
+          <p className="m-0 p-3 text-sm text-on-surface-variant">No custom rules yet.</p>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 p-3">
+          <div className="flex w-fit overflow-hidden rounded-md text-xs">
+            <label className="relative flex items-center justify-center bg-surface-container-low">
+              <input
+                type="radio"
+                name="rulemode"
+                className="peer sr-only"
+                checked={mode === 'category'}
+                onChange={() => setMode('category')}
+              />
+              <span className="cursor-pointer px-2.5 py-1.5 peer-checked:bg-accent peer-checked:text-bg">Map to a category</span>
+            </label>
+            <label className="relative flex items-center justify-center bg-surface-container-low">
+              <input 
+                type="radio" 
+                name="rulemode" 
+                className="peer sr-only"
+                checked={mode === 'freeform'} 
+                onChange={() => setMode('freeform')} 
+              />
+              <span className="cursor-pointer px-2.5 py-1.5 peer-checked:bg-accent peer-checked:text-bg">Describe what to do</span>
+            </label>
+          </div>
+          
+          <input
+            className="h-10 w-full rounded-md border border-outline-variant bg-transparent px-3 text-sm focus:border-accent focus:outline-none"
+            required
+            placeholder="Keyword, e.g. UBER *TRIP"
+            value={pattern}
+            onChange={(e) => setPattern(e.target.value)}
+          />
+          
+          {mode === 'category' ? (
+            <div className="flex flex-wrap gap-2">
+              <select
+                className="h-10 flex-1 min-w-[160px] rounded-md border border-outline-variant bg-transparent px-3 text-sm focus:border-accent focus:outline-none"
+                required
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="" disabled>Category</option>
+                {Object.entries(groupedCategories).map(([label, cats]) => (
+                  <optgroup key={label} label={label}>
+                    {(cats ?? []).map((c) => (
+                      <option key={c.developer_slug} value={c.developer_slug}>
+                        {c.category_name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <Button type="submit" variant="secondary" isLoading={createMutation.isPending}>Add rule</Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <input
+                className="h-10 flex-1 min-w-[180px] rounded-md border border-outline-variant bg-transparent px-3 text-sm focus:border-accent focus:outline-none"
+                required
+                placeholder="Natural rule, e.g. treat as a business expense"
+                value={ruleText}
+                onChange={(e) => setRuleText(e.target.value)}
+              />
+              <Button type="submit" variant="secondary" isLoading={createMutation.isPending}>Add rule</Button>
+            </div>
+          )}
+        </form>
+      </div>
     </div>
+  )
+}
+
+function AppearanceSection() {
+  const { themeMode, setThemeMode } = useTheme()
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h6 className="m-0 text-sm font-semibold text-on-surface-variant">Appearance</h6>
+      <div className="flex w-fit overflow-hidden rounded-md border border-outline-variant bg-surface text-sm">
+        <label className="relative flex items-center justify-center">
+          <input
+            type="radio"
+            name="theme"
+            className="peer sr-only"
+            checked={themeMode === 'light'}
+            onChange={() => setThemeMode('light')}
+          />
+          <span className="cursor-pointer px-4 py-1.5 peer-checked:bg-accent peer-checked:text-bg">Light</span>
+        </label>
+        <label className="relative flex items-center justify-center border-l border-outline-variant">
+          <input
+            type="radio"
+            name="theme"
+            className="peer sr-only"
+            checked={themeMode === 'dark'}
+            onChange={() => setThemeMode('dark')}
+          />
+          <span className="cursor-pointer px-4 py-1.5 peer-checked:bg-accent peer-checked:text-bg">Dark</span>
+        </label>
+        <label className="relative flex items-center justify-center border-l border-outline-variant">
+          <input 
+            type="radio" 
+            name="theme" 
+            className="peer sr-only"
+            checked={themeMode === 'auto'} 
+            onChange={() => setThemeMode('auto')} 
+          />
+          <span className="cursor-pointer px-4 py-1.5 peer-checked:bg-accent peer-checked:text-bg">Auto</span>
+        </label>
+      </div>
+    </div>
+  )
+}
+
+function LogoutSection() {
+  const { logout } = useAuth()
+  return (
+    <Button variant="secondary" className="mt-2 self-start" onClick={logout}>
+      <span className="material-symbols-outlined -ml-1 mr-1 text-[18px]">logout</span>
+      Log out
+    </Button>
   )
 }

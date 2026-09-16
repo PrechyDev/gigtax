@@ -2,7 +2,7 @@ type PillTone = 'positive' | 'warning' | 'neutral' | 'negative'
 
 const TONE_CLASSES: Record<PillTone, string> = {
   positive: 'bg-emerald/10 text-emerald-dark',
-  warning: 'bg-amber-100 text-amber-800',
+  warning: 'bg-warning/10 text-warning-dark',
   neutral: 'bg-surface-container text-on-surface-variant',
   negative: 'bg-error-container text-on-error-container',
 }

@@ -15,7 +15,7 @@ function FieldWrapper({ label, children }: FieldWrapperProps) {
 }
 
 const inputClasses =
-  'h-12 w-full rounded-lg border border-outline-variant bg-white px-4 text-sm focus:border-blue focus:outline-none focus:ring-1 focus:ring-blue'
+  'h-12 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 text-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent'
 
 export function TextField({ label, ...rest }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (

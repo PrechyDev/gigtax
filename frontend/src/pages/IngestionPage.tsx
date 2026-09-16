@@ -159,7 +159,7 @@ export function IngestionPage() {
                   <div className="flex-1">
                     <SuccessBanner message={toast.message} onDismiss={() => dismissToast(toast.id)} />
                   </div>
-                  <Link to="/ledger" className="shrink-0 text-sm font-semibold text-blue hover:underline">
+                  <Link to="/ledger" className="shrink-0 text-sm font-semibold text-accent hover:underline">
                     Review now
                   </Link>
                 </div>
@@ -199,13 +199,13 @@ export function IngestionPage() {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
-              isDragActive ? 'border-blue bg-blue/5' : 'border-outline-variant bg-surface-container-lowest'
+              isDragActive ? 'border-accent bg-accent/5' : 'border-outline-variant bg-surface-container-lowest'
             }`}
           >
             {uploadMutation.isPending ? (
               <Spinner size={32} />
             ) : (
-              <span className="material-symbols-outlined text-4xl text-blue">cloud_upload</span>
+              <span className="material-symbols-outlined text-4xl text-accent">cloud_upload</span>
             )}
             <p className="font-semibold text-navy">Drag & Drop files here</p>
             <p className="text-sm text-on-surface-variant">
@@ -289,9 +289,9 @@ export function IngestionPage() {
           </div>
         </div>
 
-        <div className="rounded-lg bg-navy p-6 text-white shadow-level-1">
+        <div className="rounded-lg bg-accent p-6 text-bg shadow-level-1">
           <h3 className="mb-2 font-semibold">Manual Entry</h3>
-          <p className="mb-4 text-sm text-white/70">
+          <p className="mb-4 text-sm opacity-70">
             Prefer to type it in yourself? Add a single income or expense record directly.
           </p>
           <Button variant="secondary" onClick={() => setShowManualEntry(true)}>

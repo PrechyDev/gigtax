@@ -7,7 +7,7 @@ export function Spinner({ size = 20, className = '' }: { size?: number; classNam
     <span
       role="status"
       aria-label="Loading"
-      className={`inline-block animate-spin rounded-full border-2 border-blue border-t-transparent ${className}`}
+      className={`inline-block animate-spin rounded-full border-2 border-accent border-t-transparent ${className}`}
       style={{ width: size, height: size }}
     />
   )

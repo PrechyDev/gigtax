@@ -79,7 +79,7 @@ function autoDeleteDate(discardedAt: string): string {
   return formatDate(date.toISOString())
 }
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 10
 const VALID_BUCKETS = new Set(LEDGER_BUCKETS.map((t) => t.id))
 
 function isLedgerBucket(value: string | null): value is LedgerBucket {
@@ -98,14 +98,23 @@ export function LedgerPage() {
     return isLedgerBucket(fromUrl) ? fromUrl : 'pending'
   })
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [taxYear, setTaxYear] = useState<string>('all')
   const isDiscardedTab = bucket === 'discarded'
   const [error, setError] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 6 }, (_, i) => String(currentYear - i))
+
   const transactionsQuery = useInfiniteQuery({
-    queryKey: ['transactions', bucket, typeFilter],
+    queryKey: ['transactions', bucket, typeFilter, taxYear],
     queryFn: ({ pageParam }) =>
-      listTransactions({ ...filtersForBucket(bucket, typeFilter), limit: PAGE_SIZE, offset: pageParam }),
+      listTransactions({ 
+        ...filtersForBucket(bucket, typeFilter), 
+        tax_year: taxYear === 'all' ? undefined : taxYear,
+        limit: PAGE_SIZE, 
+        offset: pageParam 
+      }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => (lastPage.length === PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined),
   })
@@ -191,9 +200,14 @@ export function LedgerPage() {
   }
 
   const allSelected = rows.length > 0 && rows.every((t) => selectedIds.has(t.transaction_id))
+  const someSelected = selectedIds.size > 0 && !allSelected
 
   function toggleAll() {
     setSelectedIds(allSelected ? new Set() : new Set(rows.map((t) => t.transaction_id)))
+  }
+
+  function setIndeterminate(el: HTMLInputElement | null) {
+    if (el) el.indeterminate = someSelected
   }
 
   const isBulkActionPending =
@@ -204,26 +218,44 @@ export function LedgerPage() {
 
   return (
     <AppShell title="Ledger Review">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-on-surface-variant">Review and confirm AI-categorized transactions.</p>
-        <div className="flex flex-wrap gap-1 rounded-lg bg-surface-container-low p-1">
-          {LEDGER_BUCKETS.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => {
-                setBucket(b.id)
-                setSelectedIds(new Set())
-              }}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                bucket === b.id
-                  ? 'bg-surface-container-lowest text-blue-dark shadow-level-1'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              {b.label}
-            </button>
-          ))}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="mb-1 text-[17px] font-semibold text-on-surface">Review your records</h3>
+          <p className="text-[13px] text-on-surface-variant max-w-md">
+            Review and confirm AI-categorized transactions. Only approved records count toward your tax number.
+          </p>
         </div>
+        <select
+          value={taxYear}
+          onChange={(e) => {
+            setTaxYear(e.target.value)
+            setSelectedIds(new Set())
+          }}
+          className="h-9 w-auto flex-none rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-sm font-medium text-on-surface focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          aria-label="Tax year"
+        >
+          <option value="all">All years</option>
+          {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+
+      <div className="mb-4 flex flex-wrap w-fit max-w-full gap-1 rounded-lg bg-surface-container-low p-1">
+        {LEDGER_BUCKETS.map((b) => (
+          <button
+            key={b.id}
+            onClick={() => {
+              setBucket(b.id)
+              setSelectedIds(new Set())
+            }}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              bucket === b.id
+                ? 'bg-surface text-on-surface shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            {b.id === 'uncategorized' ? <><span className="hidden sm:inline">{b.label}</span><span className="sm:hidden">Uncat.</span></> : b.label}
+          </button>
+        ))}
       </div>
 
       {bucketHasTypeFilter(bucket) && (
@@ -237,7 +269,7 @@ export function LedgerPage() {
               }}
               className={`rounded-md px-3 py-1 font-medium transition-colors ${
                 typeFilter === t.id
-                  ? 'bg-surface-container-lowest text-blue-dark shadow-level-1'
+                  ? 'bg-surface-container-lowest text-accent shadow-level-1'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
@@ -267,14 +299,14 @@ export function LedgerPage() {
       )}
 
       {selectedIds.size > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-navy px-4 py-3 text-white shadow-level-1">
+        <div className="fixed bottom-[5.5rem] left-4 right-4 z-50 flex flex-wrap items-center gap-3 rounded-lg bg-accent px-4 py-4 text-bg shadow-level-2 md:static md:mb-4 md:w-auto md:py-3 md:shadow-level-1">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           {isDiscardedTab ? (
             <>
               <button
                 onClick={() => bulkRestoreMutation.mutate(Array.from(selectedIds))}
                 disabled={isBulkActionPending}
-                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50 text-bg"
               >
                 {bulkRestoreMutation.isPending && <Spinner size={14} />}
                 Restore Selected
@@ -282,7 +314,7 @@ export function LedgerPage() {
               <button
                 onClick={handleBulkHardDelete}
                 disabled={isBulkActionPending}
-                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-error hover:bg-white/20 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50 text-bg"
               >
                 {bulkHardDeleteMutation.isPending && <Spinner size={14} />}
                 Delete Permanently
@@ -293,7 +325,7 @@ export function LedgerPage() {
               <button
                 onClick={() => bulkApproveMutation.mutate(Array.from(selectedIds))}
                 disabled={isBulkActionPending}
-                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50 text-bg"
               >
                 {bulkApproveMutation.isPending && <Spinner size={14} />}
                 Approve Selected
@@ -301,14 +333,14 @@ export function LedgerPage() {
               <button
                 onClick={() => bulkDiscardMutation.mutate(Array.from(selectedIds))}
                 disabled={isBulkActionPending}
-                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold text-error hover:bg-white/20 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-md bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20 disabled:opacity-50 text-bg"
               >
                 {bulkDiscardMutation.isPending && <Spinner size={14} />}
                 Discard Selected
               </button>
             </>
           )}
-          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-sm text-white/70 hover:text-white">
+          <button onClick={() => setSelectedIds(new Set())} className="ml-auto text-sm text-bg/70 hover:text-bg">
             Cancel
           </button>
         </div>
@@ -331,20 +363,57 @@ export function LedgerPage() {
       )}
 
       {rows.length > 0 && (
-        <div className="overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1">
-          <table className="w-full text-sm">
-            <thead>
+        <>
+          <div className="md:hidden mb-3 flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              id="select-all-mobile"
+              checked={allSelected}
+              onChange={toggleAll}
+              ref={setIndeterminate}
+              aria-label="Select all"
+            />
+            <label htmlFor="select-all-mobile" className="text-sm font-medium text-on-surface-variant">
+              Select all
+            </label>
+          </div>
+          <div className="md:hidden flex flex-col space-y-4 pb-32">
+            {rows.map((transaction) => (
+              <TransactionCard
+                key={transaction.transaction_id}
+                transaction={transaction}
+                category={categoryFor(transaction)}
+                categories={categoriesQuery.data ?? []}
+                isDiscardedTab={isDiscardedTab}
+                isSelected={selectedIds.has(transaction.transaction_id)}
+                onToggleSelect={() => toggleOne(transaction.transaction_id)}
+                onReview={(input) => reviewMutation.mutate({ id: transaction.transaction_id, ...input })}
+                onHardDelete={() => handleDeleteOne(transaction)}
+                isSaving={reviewMutation.isPending}
+                isDeleting={deleteOneMutation.isPending}
+              />
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1">
+            <table className="w-full text-sm table-fixed">
+              <thead>
               <tr className="border-b border-outline-variant text-left text-xs font-semibold uppercase text-on-surface-variant">
                 <th className="w-10 px-4 py-3">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all" />
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    ref={setIndeterminate}
+                    aria-label="Select all"
+                  />
                 </th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3 tabular-nums">Amount</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Receipt</th>
-                <th className="px-4 py-3" />
+                <th className="w-[11%] px-4 py-3">Date</th>
+                <th className="w-[33%] px-4 py-3">Description</th>
+                <th className="w-[14%] px-4 py-3 tabular-nums">Amount</th>
+                <th className="w-[19%] px-4 py-3">Category</th>
+                <th className="w-[100px] px-4 py-3">Status</th>
+                <th className="w-[110px] px-4 py-3">Receipt</th>
+                <th className="w-[76px] px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -365,7 +434,8 @@ export function LedgerPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       {transactionsQuery.hasNextPage && (
@@ -438,8 +508,8 @@ function TransactionRow({
 
   return (
     <>
-      <tr className={`border-b border-outline-variant last:border-0 ${isSelected ? 'bg-blue/5' : ''}`}>
-        <td className="px-4 py-3">
+      <tr className={`border-b border-outline-variant last:border-0 ${isSelected ? 'bg-accent/5' : ''}`}>
+        <td className="px-4 py-3 w-10 overflow-hidden pr-0">
           <input
             type="checkbox"
             checked={isSelected}
@@ -447,8 +517,8 @@ function TransactionRow({
             aria-label={`Select transaction: ${transaction.description}`}
           />
         </td>
-        <td className="whitespace-nowrap px-4 py-3">{formatDate(transaction.date)}</td>
-        <td className="px-4 py-3">
+        <td className="whitespace-nowrap overflow-hidden text-[12.5px] px-4 py-3">{formatDate(transaction.date)}</td>
+        <td className="px-4 py-3 overflow-hidden">
           {isEditingDescription ? (
             <input
               autoFocus
@@ -462,109 +532,116 @@ function TransactionRow({
                   setIsEditingDescription(false)
                 }
               }}
-              className="h-8 w-full rounded-md border border-blue px-2 text-sm"
+              className="h-[28px] w-full rounded-md border border-accent px-1.5 py-0.5 text-[13px]"
             />
           ) : (
             <button
-              className="flex items-center gap-1.5 text-left hover:underline"
+              className="w-full text-left truncate cursor-pointer bg-transparent border-none p-0 inherit-font hover:underline"
               onClick={() => setIsEditingDescription(true)}
-              title="Rename"
+              title="Click to rename"
             >
               {transaction.description}
-              <span className="material-symbols-outlined shrink-0 text-sm text-on-surface-variant">edit</span>
             </button>
           )}
-          <p className="text-xs text-on-surface-variant">{transaction.source}</p>
+          <p className="text-xs text-on-surface-variant truncate mt-0.5">{transaction.source}</p>
         </td>
         <td
-          className={`whitespace-nowrap px-4 py-3 tabular-nums font-medium ${
+          className={`whitespace-nowrap px-4 py-3 tabular-nums font-semibold ${
             transaction.type === 'income' ? 'text-emerald-dark' : 'text-navy'
           }`}
         >
           {transaction.type === 'income' ? '+' : '-'}
           {formatNaira(transaction.amount)}
         </td>
-        <td className="px-4 py-3">
-          <select
-            defaultValue={selectableCategory?.developer_slug ?? ''}
-            onChange={(e) => onReview({ category_slug: e.target.value })}
-            className={`h-9 rounded-md border bg-white px-2 text-xs ${
-              isLowConfidence ? 'border-error text-error' : 'border-outline-variant'
-            }`}
-          >
-            <option value="" disabled>
-              Select a category...
-            </option>
-            {groupCategoriesForType(categories, transaction.type).map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.categories.map((c) => (
-                  <option key={c.developer_slug} value={c.developer_slug}>
-                    {c.category_name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          {isLowConfidence && <p className="mt-1 text-xs text-error">AI confidence low — please verify</p>}
+        <td className="px-4 py-3 overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <select
+              defaultValue={selectableCategory?.developer_slug ?? ''}
+              onChange={(e) => onReview({ category_slug: e.target.value })}
+              className={`flex-1 min-w-0 min-h-[30px] rounded-md border bg-surface-container-lowest px-1.5 py-0.5 text-[12px] ${
+                isLowConfidence ? 'border-error text-error' : 'border-outline-variant'
+              }`}
+            >
+              <option value="" disabled>
+                Select
+              </option>
+              {groupCategoriesForType(categories, transaction.type).map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.categories.map((c) => (
+                    <option key={c.developer_slug} value={c.developer_slug}>
+                      {c.category_name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {isLowConfidence && (
+              <span className="material-symbols-outlined text-error shrink-0 text-base" title="AI was not confident, please check this category">
+                warning
+              </span>
+            )}
+          </div>
         </td>
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
           <div className="flex items-center gap-2">
             <StatusPill label={transaction.review_status} tone={reviewStatusTone(transaction.review_status)} />
             {isSaving && <Spinner size={14} />}
           </div>
           {isDiscardedTab && transaction.discarded_at && (
-            <p className="mt-1 text-xs text-on-surface-variant">
-              Discarded {formatDate(transaction.discarded_at)} — auto-deletes {autoDeleteDate(transaction.discarded_at)}
+            <p className="mt-1 text-xs text-on-surface-variant truncate">
+              Auto-deletes {autoDeleteDate(transaction.discarded_at)}
             </p>
           )}
-          <div className="mt-1 flex items-center gap-2 text-xs">
+        </td>
+        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
+          <ReceiptCell transactionId={transaction.transaction_id} />
+        </td>
+        <td className="px-4 py-3 whitespace-nowrap overflow-hidden">
+          <div className="flex gap-0.5">
             {isDiscardedTab ? (
-              <button
-                disabled={isSaving}
-                onClick={() => onReview({ review_status: 'PENDING' })}
-                className="text-emerald-dark hover:underline disabled:opacity-50"
-              >
-                Restore
-              </button>
+              <>
+                <button
+                  disabled={isSaving}
+                  onClick={() => onReview({ review_status: 'PENDING' })}
+                  className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-emerald-dark hover:bg-emerald/10 disabled:opacity-50"
+                  title="Restore"
+                >
+                  <span className="material-symbols-outlined text-[14px]">restore</span>
+                </button>
+                <button
+                  onClick={onHardDelete}
+                  disabled={isDeleting}
+                  className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-on-surface-variant hover:bg-error/10 hover:text-error disabled:opacity-50"
+                  title="Delete permanently"
+                >
+                  {isDeleting ? <Spinner size={14} /> : <span className="material-symbols-outlined text-[14px]">delete</span>}
+                </button>
+              </>
             ) : (
               <>
-                {transaction.review_status !== 'APPROVED' && (
-                  <button
-                    disabled={isSaving}
-                    onClick={() => onReview({ review_status: 'APPROVED' })}
-                    className="text-emerald-dark hover:underline disabled:opacity-50"
-                  >
-                    Approve
-                  </button>
-                )}
                 {transaction.review_status !== 'REJECTED' && (
                   <button
                     disabled={isSaving}
                     onClick={() => onReview({ review_status: 'REJECTED' })}
-                    className="text-on-surface-variant hover:underline disabled:opacity-50"
+                    className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-on-surface-variant hover:bg-surface-container-high disabled:opacity-50"
+                    title="Discard"
                   >
-                    Discard
+                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                  </button>
+                )}
+                {transaction.review_status !== 'APPROVED' && (
+                  <button
+                    disabled={isSaving}
+                    onClick={() => onReview({ review_status: 'APPROVED' })}
+                    className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-emerald-dark hover:bg-emerald/10 disabled:opacity-50"
+                    title="Approve"
+                  >
+                    {isSaving ? <Spinner size={14} /> : <span className="material-symbols-outlined text-[14px]">check</span>}
                   </button>
                 )}
               </>
             )}
           </div>
-        </td>
-        <td className="px-4 py-3">
-          <ReceiptCell transactionId={transaction.transaction_id} />
-        </td>
-        <td className="px-4 py-3">
-          {isDiscardedTab && (
-            <button
-              onClick={onHardDelete}
-              disabled={isDeleting}
-              aria-label="Delete permanently"
-              title="Delete permanently"
-              className="text-on-surface-variant hover:text-error disabled:opacity-50"
-            >
-              {isDeleting ? <Spinner size={16} /> : <span className="material-symbols-outlined text-lg">delete_forever</span>}
-            </button>
-          )}
         </td>
       </tr>
     </>
@@ -595,7 +672,7 @@ function ReceiptCell({ transactionId }: { transactionId: string }) {
     return (
       <Link
         to="/settings"
-        className="text-xs text-on-surface-variant hover:text-blue hover:underline"
+        className="text-xs text-on-surface-variant hover:text-accent hover:underline"
         title="Connect Google Drive in Settings to attach receipts"
       >
         Connect Drive
@@ -617,7 +694,7 @@ function ReceiptCell({ transactionId }: { transactionId: string }) {
           href={`https://drive.google.com/file/d/${mostRecent.storage_path}/view`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
           title={`Uploaded ${formatDate(mostRecent.upload_date)}`}
         >
           <span className="material-symbols-outlined text-base">description</span>
@@ -627,7 +704,7 @@ function ReceiptCell({ transactionId }: { transactionId: string }) {
         <span className="text-xs text-on-surface-variant">No receipt</span>
       )}
       <label
-        className="cursor-pointer text-on-surface-variant hover:text-blue"
+        className="cursor-pointer text-on-surface-variant hover:text-accent"
         title={mostRecent ? 'Attach another receipt' : 'Attach a receipt (recommended, not required)'}
       >
         {uploadMutation.isPending ? (
@@ -645,6 +722,181 @@ function ReceiptCell({ transactionId }: { transactionId: string }) {
         />
       </label>
       {error && <span className="text-xs text-error" title={error}>⚠</span>}
+    </div>
+  )
+}
+
+function TransactionCard({
+  transaction,
+  category,
+  categories,
+  isDiscardedTab,
+  isSelected,
+  onToggleSelect,
+  onReview,
+  onHardDelete,
+  isSaving,
+  isDeleting,
+}: {
+  transaction: Transaction
+  category?: { developer_slug: string; category_name: string }
+  categories: Category[]
+  isDiscardedTab: boolean
+  isSelected: boolean
+  onToggleSelect: () => void
+  onReview: (input: TransactionReviewInput) => void
+  onHardDelete: () => void
+  isSaving: boolean
+  isDeleting: boolean
+}) {
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [descriptionDraft, setDescriptionDraft] = useState(transaction.description)
+  const isLowConfidence =
+    transaction.review_status === 'PENDING' &&
+    transaction.user_category_id === null &&
+    transaction.confidence_score !== null &&
+    transaction.confidence_score < LOW_CONFIDENCE_THRESHOLD
+  const isUncategorized = category?.developer_slug === UNCATEGORIZED_CATEGORY_SLUG
+  const selectableCategory = category && !isUncategorized ? category : undefined
+
+  function saveDescription() {
+    setIsEditingDescription(false)
+    const trimmed = descriptionDraft.trim()
+    if (trimmed && trimmed !== transaction.description) {
+      onReview({ description: trimmed })
+    } else {
+      setDescriptionDraft(transaction.description)
+    }
+  }
+
+  return (
+    <div className={`rounded-xl border p-4 shadow-sm flex flex-col gap-3 ${isSelected ? 'border-accent bg-accent/5' : 'border-outline-variant bg-surface-container-lowest'}`}>
+      
+      {/* Top Row: Checkbox, Status, Date */}
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 text-xs text-on-surface-variant cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onToggleSelect}
+            aria-label={`Select transaction: ${transaction.description}`}
+          />
+          {formatDate(transaction.date)}
+        </label>
+        <StatusPill label={transaction.review_status} tone={reviewStatusTone(transaction.review_status)} />
+      </div>
+
+      {/* Main Row: Description and Amount */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          {isEditingDescription ? (
+            <input
+              autoFocus
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              onBlur={saveDescription}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveDescription()
+                if (e.key === 'Escape') {
+                  setDescriptionDraft(transaction.description)
+                  setIsEditingDescription(false)
+                }
+              }}
+              className="h-8 w-full rounded-md border border-accent px-2 text-sm"
+            />
+          ) : (
+            <button
+              className="flex items-start gap-1.5 text-left text-navy hover:underline group w-full overflow-hidden"
+              onClick={() => setIsEditingDescription(true)}
+            >
+              <span className="font-semibold text-sm truncate leading-tight">{transaction.description}</span>
+              <span className="material-symbols-outlined shrink-0 text-[14px] text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
+            </button>
+          )}
+          <p className="text-xs text-on-surface-variant mt-0.5 truncate">{transaction.source}</p>
+        </div>
+        <span className={`tabular-nums font-semibold text-[14px] whitespace-nowrap ${transaction.type === 'income' ? 'text-emerald-dark' : 'text-navy'}`}>
+          {transaction.type === 'income' ? '+' : '-'}{formatNaira(transaction.amount)}
+        </span>
+      </div>
+
+      {/* Category Dropdown */}
+      <div className="flex flex-col">
+        <select
+          defaultValue={selectableCategory?.developer_slug ?? ''}
+          onChange={(e) => onReview({ category_slug: e.target.value })}
+          className={`h-9 w-full rounded-md border bg-surface-container-lowest px-2 text-[13px] focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none ${
+            isLowConfidence ? 'border-error text-error' : 'border-outline-variant text-navy'
+          }`}
+        >
+          <option value="" disabled>Select a category...</option>
+          {groupCategoriesForType(categories, transaction.type).map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.categories.map((c) => (
+                <option key={c.developer_slug} value={c.developer_slug}>
+                  {c.category_name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        {isLowConfidence && <p className="mt-1 text-[11px] text-error m-0">AI was not confident here, please check</p>}
+      </div>
+
+      {/* Footer: Receipt and Actions */}
+      <div className="flex flex-col gap-2 border-t border-outline-variant pt-2">
+        <div className="flex justify-between items-center px-1">
+          <ReceiptCell transactionId={transaction.transaction_id} />
+          {isDiscardedTab && transaction.discarded_at && (
+            <span className="text-[11px] text-on-surface-variant">
+              Deletes {autoDeleteDate(transaction.discarded_at)}
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2 w-full">
+          {isDiscardedTab ? (
+            <>
+              <button
+                disabled={isSaving}
+                onClick={() => onReview({ review_status: 'PENDING' })}
+                className="flex-1 flex items-center justify-center h-9 px-3 text-[13px] font-medium text-navy border border-outline-variant bg-surface hover:bg-surface-container-high rounded-md disabled:opacity-50 transition-colors"
+              >
+                Restore
+              </button>
+              <button
+                onClick={onHardDelete}
+                disabled={isDeleting}
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-outline-variant bg-surface hover:bg-error/10 text-on-surface-variant hover:text-error disabled:opacity-50 transition-colors"
+                title="Delete permanently"
+              >
+                {isDeleting ? <Spinner size={16} /> : <span className="material-symbols-outlined text-[18px]">delete</span>}
+              </button>
+            </>
+          ) : (
+            <>
+              {transaction.review_status !== 'REJECTED' && (
+                <button
+                  disabled={isSaving}
+                  onClick={() => onReview({ review_status: 'REJECTED' })}
+                  className="flex-1 flex h-9 items-center justify-center px-3 text-[13px] font-medium text-navy border border-outline-variant bg-surface hover:bg-surface-container-high rounded-md disabled:opacity-50 transition-colors"
+                >
+                  Discard
+                </button>
+              )}
+              {transaction.review_status !== 'APPROVED' && (
+                <button
+                  disabled={isSaving}
+                  onClick={() => onReview({ review_status: 'APPROVED' })}
+                  className="flex-1 flex h-9 items-center justify-center rounded-md border border-outline-variant bg-surface hover:bg-emerald/10 px-4 text-[13px] font-medium text-navy hover:text-emerald-dark disabled:opacity-50 transition-colors"
+                >
+                  {isSaving ? <Spinner size={16} /> : 'Approve'}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

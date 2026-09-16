@@ -31,9 +31,10 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest p-8 shadow-level-1">
-        <div className="mb-6 text-center">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="material-symbols-outlined mb-2 text-3xl text-accent">payments</span>
           <h1 className="text-2xl font-bold text-navy">GigTax</h1>
-          <p className="text-sm text-on-surface-variant">Welcome back</p>
+          <p className="mt-1 text-sm text-on-surface-variant">Personal income tax made simple for freelancers</p>
         </div>
 
         {error && (
@@ -57,13 +58,13 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <Button type="submit" isLoading={isSubmitting} className="w-full">
-            Sign In
+            Log in
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-on-surface-variant">
-          New to GigTax?{' '}
-          <Link to="/register" className="font-semibold text-blue">
+          New here?{' '}
+          <Link to="/register" className="font-semibold text-accent">
             Create an account
           </Link>
         </p>

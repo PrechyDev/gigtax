@@ -24,7 +24,7 @@ export function YearSelector({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Tax year"
-      className="h-9 rounded-md border border-outline-variant bg-white px-3 text-sm font-medium text-navy focus:border-blue focus:outline-none focus:ring-1 focus:ring-blue"
+      className="h-11 rounded-md border border-outline-variant bg-surface-container-lowest px-3 text-sm font-medium text-navy focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
     >
       {options.map((y) => (
         <option key={y} value={y}>

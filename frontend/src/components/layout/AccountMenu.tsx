@@ -27,7 +27,7 @@ export function AccountMenu() {
       <button
         onClick={() => setIsOpen((v) => !v)}
         aria-label="Account menu"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-blue/10 text-sm font-semibold text-blue-dark"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent-dark"
       >
         {user?.name?.charAt(0).toUpperCase() ?? '?'}
       </button>

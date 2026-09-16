@@ -16,7 +16,7 @@ export function EmptyState({ icon, message, action }: EmptyStateProps) {
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-2 rounded-md bg-blue px-4 py-2 text-sm font-semibold text-white hover:bg-blue-dark"
+          className="mt-2 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
         >
           {action.label}
         </button>
