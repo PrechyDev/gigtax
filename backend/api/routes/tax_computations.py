@@ -141,32 +141,23 @@ def get_tax_computation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    computation = (
-        db.query(TaxComputation)
-        .filter(TaxComputation.user_id == current_user.user_id, TaxComputation.tax_year == tax_year)
-        .first()
-    )
-    if computation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No tax computation for {tax_year} yet — POST to /tax-computations/{tax_year}/compute first.",
-        )
-
-    minimum_wage_exempt = computation.total_income <= NATIONAL_MINIMUM_WAGE_ANNUAL
-    _, band_breakdown = (0.0, []) if minimum_wage_exempt else apply_fourth_schedule(computation.taxable_income)
-    # Rows computed before the itemized breakdown was introduced have items=None.
-    items = computation.items or EMPTY_ITEMS
+    from datetime import datetime, timezone
+    transactions = load_categorized_transactions(db, current_user, tax_year)
+    capital_allowances = load_capital_allowances_for_year(db, current_user.user_id, tax_year)
+    capital_allowance_items = load_capital_allowance_items(db, current_user.user_id, tax_year)
+    result = compute_tax(transactions, capital_allowances_this_year=capital_allowances)
+    items = build_itemized_breakdown(db, transactions, capital_allowance_items)
 
     return TaxComputationOut(
         tax_year=tax_year,
-        total_income=computation.total_income,
-        total_deductions=computation.total_deductions,
-        total_reliefs=computation.total_reliefs,
-        total_capital_allowances=computation.total_capital_allowances,
-        taxable_income=computation.taxable_income,
-        estimated_tax_owed=computation.estimated_tax_owed,
-        minimum_wage_exempt=minimum_wage_exempt,
-        band_breakdown=[b.__dict__ for b in band_breakdown],
+        total_income=result.total_income,
+        total_deductions=result.total_deductions,
+        total_reliefs=result.total_reliefs,
+        total_capital_allowances=result.total_capital_allowances,
+        taxable_income=result.chargeable_income,
+        estimated_tax_owed=result.net_tax,
+        minimum_wage_exempt=result.minimum_wage_exempt,
+        band_breakdown=[b.__dict__ for b in result.band_breakdown],
         **items,
-        last_updated=computation.last_updated,
+        last_updated=datetime.now(timezone.utc),
     )

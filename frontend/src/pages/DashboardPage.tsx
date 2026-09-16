@@ -25,78 +25,101 @@ export function DashboardPage() {
 
   return (
     <AppShell title="Dashboard">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-navy">Welcome back, {user?.name?.split(' ')[0]}</h2>
-          <p className="text-on-surface-variant">Here is your financial overview for Fiscal Year {taxYear}</p>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="m-0 mb-1 text-xl font-semibold">Welcome back, {user?.name?.split(' ')[0]}</h3>
+            <p className="m-0 text-sm text-on-surface-variant">Here is where things stand for tax year {taxYear}</p>
+          </div>
+          <YearSelector value={taxYear} onChange={setTaxYear} />
         </div>
-        <YearSelector value={taxYear} onChange={setTaxYear} />
-      </div>
 
-      {isLoading && <PageSpinner />}
-      {isError && (
-        <ErrorBanner
-          message={error instanceof ApiError ? error.message : 'Could not load your dashboard.'}
-          onRetry={() => refetch()}
-        />
-      )}
+        {isLoading && <PageSpinner />}
+        {isError && (
+          <ErrorBanner
+            message={error instanceof ApiError ? error.message : 'Could not load your dashboard.'}
+            onRetry={() => refetch()}
+          />
+        )}
 
-      {data && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <StatCard label="Gross Income (YTD)" value={formatNaira(data.total_income)} icon="payments" />
-            <StatCard label="Allowable Deductions" value={formatNaira(data.total_deductions)} icon="receipt_long" />
-            <StatCard
-              label="Capital Allowances"
-              value={formatNaira(data.total_capital_allowances)}
-              icon="inventory_2"
-            />
-          </div>
+        {data && (
+          <>
+            <div>
+              <h6 className="m-0 mb-2 text-sm font-medium text-on-surface-variant">What you owe, based on approved records</h6>
+              <div className="rounded-xl bg-accent p-4 text-bg shadow-md">
+                <p className="m-0 text-xs opacity-85">Estimated tax owed, {taxYear}</p>
+                <p className="m-0 mt-1 font-heading text-3xl font-semibold tabular-nums">{formatNaira(data.estimated_tax_owed)}</p>
+                <p className="m-0 mt-2 text-xs opacity-85">
+                  From {data.approved_transactions_count} approved transactions. Approve more in the ledger to refine this number.
+                </p>
+              </div>
+            </div>
 
-          <div className="rounded-lg bg-navy p-6 text-white shadow-level-1">
-            <p className="text-sm text-white/70">Estimated Tax Liability ({taxYear})</p>
-            <p className="mt-1 text-3xl font-bold tabular-nums">{formatNaira(data.estimated_tax_owed)}</p>
-          </div>
+            <div>
+              <h6 className="m-0 mb-2 text-sm font-medium text-on-surface-variant">How that number was reached</h6>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                <StatCard 
+                  label="Gross Income (YTD)" 
+                  value={formatNaira(data.total_income)} 
+                  icon="payments" 
+                  hint="Total incoming payments across all accounts" 
+                />
+                <StatCard 
+                  label="Allowable Deductions" 
+                  value={formatNaira(data.total_deductions)} 
+                  icon="receipt_long" 
+                  hint="Approved business expenses subtracted from your income" 
+                />
+                <StatCard
+                  label="Capital Allowances"
+                  value={formatNaira(data.total_capital_allowances)}
+                  icon="inventory_2"
+                  hint="Write-downs for large equipment (laptops, cameras, etc.)"
+                />
+              </div>
+            </div>
 
-          <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-6 shadow-level-1">
-            <h3 className="mb-3 font-semibold text-navy">Outstanding Actions</h3>
-            {data.outstanding_actions.length > 0 ? (
-              <ul className="space-y-2">
-                {data.outstanding_actions.map((action) => (
-                  <li key={action.href + action.message}>
+            <div>
+              <h6 className="m-0 mb-2 text-sm font-medium text-on-surface-variant">Needs your attention</h6>
+              <div className="flex flex-col gap-2">
+                {data.outstanding_actions.length > 0 ? (
+                  data.outstanding_actions.map((action) => (
                     <Link
+                      key={action.href + action.message}
                       to={action.href}
-                      className="flex items-start gap-2 text-sm text-on-surface-variant hover:text-blue-dark hover:underline"
+                      className="flex items-center gap-3 border border-outline-variant bg-surface p-3 no-underline text-on-surface hover:bg-surface-container-low transition-colors rounded-lg"
                     >
-                      <span className="material-symbols-outlined text-lg text-blue">arrow_right</span>
-                      {action.message}
+                      <span className="material-symbols-outlined shrink-0 text-lg text-accent">info</span>
+                      <span className="flex-1 text-sm">{action.message}</span>
+                      <span className="material-symbols-outlined text-lg text-on-surface-variant/60">chevron_right</span>
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="flex items-center gap-2 text-sm text-emerald-dark">
-                <span className="material-symbols-outlined text-lg">check_circle</span>
-                You're all caught up — nothing outstanding.
-              </p>
-            )}
-          </div>
-
-          <p className="text-xs text-on-surface-variant">{data.filing_guidance}</p>
-        </div>
-      )}
+                  ))
+                ) : (
+                  <div className="flex items-center gap-2 p-3 text-sm text-on-surface-variant">
+                    <span className="material-symbols-outlined text-lg text-accent">check_circle</span>
+                    You are all caught up, nothing outstanding.
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <p className="text-xs text-on-surface-variant mt-2">{data.filing_guidance}</p>
+          </>
+        )}
+      </div>
     </AppShell>
   )
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+function StatCard({ label, value, icon, hint }: { label: string; value: string; icon: string; hint: string }) {
   return (
-    <div className="rounded-lg bg-surface-container-lowest p-5 shadow-level-1">
-      <div className="mb-2 flex items-center gap-2 text-on-surface-variant">
-        <span className="material-symbols-outlined text-xl">{icon}</span>
-        <span className="text-sm font-medium">{label}</span>
+    <div className="flex flex-col gap-2 rounded-xl bg-surface-container-lowest border border-outline-variant p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-on-surface-variant">
+        <span className="material-symbols-outlined text-base">{icon}</span>
+        <span className="text-xs font-medium">{label}</span>
       </div>
-      <p className="text-2xl font-bold tabular-nums text-navy">{value}</p>
+      <p className="m-0 font-heading text-xl font-semibold tabular-nums">{value}</p>
+      <p className="m-0 text-xs text-on-surface-variant">{hint}</p>
     </div>
   )
 }

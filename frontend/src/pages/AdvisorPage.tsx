@@ -139,17 +139,17 @@ export function AdvisorPage() {
       <div className="flex h-[calc(100vh-8rem)] flex-col rounded-lg bg-surface-container-lowest shadow-level-1 md:h-[calc(100vh-6rem)]">
         <div className="relative flex items-center justify-between border-b border-outline-variant px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined fill text-2xl text-blue">smart_toy</span>
+            <span className="material-symbols-outlined fill text-2xl text-accent">smart_toy</span>
             <div>
               <p className="font-semibold text-navy">Ada</p>
               <p className="text-xs text-on-surface-variant">AI Tax Advisor</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setHistoryOpen((v) => !v)} className="text-sm text-blue hover:underline">
+            <button onClick={() => setHistoryOpen((v) => !v)} className="text-sm text-accent hover:underline">
               History
             </button>
-            <button onClick={startNewChat} className="text-sm text-blue hover:underline">
+            <button onClick={startNewChat} className="text-sm text-accent hover:underline">
               New chat
             </button>
           </div>
@@ -174,7 +174,7 @@ export function AdvisorPage() {
                   <div
                     key={session.session_id}
                     className={`flex items-start gap-2 border-b border-outline-variant px-4 py-2.5 last:border-0 hover:bg-surface-container-low ${
-                      session.session_id === sessionId ? 'bg-blue/5' : ''
+                      session.session_id === sessionId ? 'bg-accent/5' : ''
                     }`}
                   >
                     <button onClick={() => openSession(session)} className="min-w-0 flex-1 text-left">
@@ -213,7 +213,9 @@ export function AdvisorPage() {
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${
-                  message.role === 'user' ? 'bg-navy text-white' : 'bg-surface-container text-on-surface'
+                  message.role === 'user'
+                    ? 'bg-accent text-bg'
+                    : 'border border-outline-variant bg-surface-container text-on-surface'
                 }`}
               >
                 {message.role === 'assistant' ? (
@@ -277,12 +279,12 @@ export function AdvisorPage() {
               }}
               rows={1}
               placeholder="Ask about your taxes..."
-              className="max-h-32 flex-1 resize-none rounded-lg border border-outline-variant px-4 py-2.5 text-sm focus:border-blue focus:outline-none"
+              className="max-h-32 flex-1 resize-none rounded-lg border border-outline-variant px-4 py-2.5 text-sm focus:border-accent focus:outline-none"
             />
             <button
               type="submit"
               disabled={askMutation.isPending || !input.trim()}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue text-white disabled:bg-blue/50"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent text-bg disabled:bg-accent/50"
             >
               <span className="material-symbols-outlined">send</span>
             </button>

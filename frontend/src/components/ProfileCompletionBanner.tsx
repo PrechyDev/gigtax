@@ -31,16 +31,16 @@ export function ProfileCompletionBanner() {
   }
 
   return (
-    <div className="mb-4 flex items-start gap-3 rounded-lg border border-blue/20 bg-blue/5 px-4 py-3">
-      <span className="material-symbols-outlined mt-0.5 shrink-0 text-blue">info</span>
+    <div className="mb-4 flex items-start gap-3 rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
+      <span className="material-symbols-outlined mt-0.5 shrink-0 text-accent">info</span>
       <p className="flex-1 text-sm text-navy">
         Your profile is incomplete — add your occupation, state, and tax year so we can tailor your
         reliefs and filing guidance.{' '}
-        <Link to="/settings" className="font-semibold text-blue underline">
+        <Link to="/settings" className="font-semibold text-accent underline">
           Complete profile
         </Link>
       </p>
-      <button onClick={dismiss} aria-label="Dismiss" className="shrink-0 text-blue/70">
+      <button onClick={dismiss} aria-label="Dismiss" className="shrink-0 text-accent/70">
         <span className="material-symbols-outlined text-lg">close</span>
       </button>
     </div>

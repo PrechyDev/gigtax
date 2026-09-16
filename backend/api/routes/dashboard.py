@@ -128,6 +128,7 @@ def get_dashboard(
         total_reliefs=result.total_reliefs,
         total_capital_allowances=result.total_capital_allowances,
         estimated_tax_owed=result.net_tax,
+        approved_transactions_count=len(transactions),
         pending_review_count=pending_review_count,
         uncategorized_count=uncategorized_count,
         locked_statements_count=locked_statements_count,

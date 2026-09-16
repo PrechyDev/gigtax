@@ -38,9 +38,6 @@ export function getTaxComputation(taxYear: string) {
   return apiFetch<TaxComputation>(`/tax-computations/${taxYear}`)
 }
 
-export function computeTax(taxYear: string) {
-  return apiFetch<TaxComputation>(`/tax-computations/${taxYear}/compute`, { method: 'POST' })
-}
 
 export async function downloadReport(taxYear: string): Promise<Blob> {
   return apiFetch<Blob>(`/tax-computations/${taxYear}/report`)
@@ -58,6 +55,7 @@ export interface DashboardData {
   total_reliefs: number
   total_capital_allowances: number
   estimated_tax_owed: number
+  approved_transactions_count: number
   pending_review_count: number
   uncategorized_count: number
   locked_statements_count: number

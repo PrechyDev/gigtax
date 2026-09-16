@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-from core.security import decode_access_token
+from core.security import decode_access_token, decode_oauth_state_token
 
 
 def _register(client, email="drive-user@example.com"):
@@ -29,9 +29,13 @@ def test_connect_redirects_to_google_with_signed_state(client):
 
     assert response.status_code in (302, 307)
     assert response.headers["location"].startswith("https://accounts.google.com")
-    # The state passed to build_auth_flow must decode back to the same user.
+    # The state passed to build_auth_flow must decode back to the same user. It must
+    # decode only as an OAuth-state token, not as a general API access token — the
+    # JWT-leak fix (core/security.py's decode_access_token) explicitly rejects a
+    # `purpose: google_oauth_state` token so a leaked state param can't be replayed
+    # as a Bearer token.
     state_used = mock_build_flow.call_args.kwargs["state"]
-    assert decode_access_token(state_used)
+    assert decode_oauth_state_token(state_used)
 
 
 def test_connect_redirects_to_settings_with_error_flag_on_unexpected_failure(client):

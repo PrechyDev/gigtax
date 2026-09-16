@@ -94,7 +94,7 @@ export function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-on-surface-variant">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue">
+          <Link to="/login" className="font-semibold text-accent">
             Sign in
           </Link>
         </p>

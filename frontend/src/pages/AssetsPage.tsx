@@ -8,15 +8,33 @@ import { ErrorBanner } from '../components/ui/Banner'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { PageSpinner } from '../components/ui/Spinner'
-import { StatusPill, assetStatusTone } from '../components/ui/StatusPill'
 import { TextField } from '../components/ui/FormField'
 import { ApiError } from '../lib/apiClient'
-import { formatDate, formatNaira } from '../lib/formatters'
+import { formatNaira } from '../lib/formatters'
+import type { Asset } from '../api/assets'
 
-const ASSET_CLASS_LABELS: Record<string, string> = {
-  class_1: 'Class 1 (10%/yr)',
-  class_2: 'Class 2 (20%/yr)',
-  class_3: 'Class 3 (25%/yr)',
+const ASSET_CLASS: Record<string, { tag: string; rate: string }> = {
+  class_1: { tag: 'Class 1', rate: '10%/yr' },
+  class_2: { tag: 'Class 2', rate: '20%/yr' },
+  class_3: { tag: 'Class 3', rate: '25%/yr' },
+}
+
+/** No physical-category field exists on the asset record (asset_class is a
+ * depreciation-rate tier, not a category) — derive an icon from the description as a
+ * best-effort visual cue rather than a precise classification. */
+function assetIcon(description: string): string {
+  const d = description.toLowerCase()
+  if (/laptop|macbook|computer|\bpc\b|desktop/.test(d)) return 'laptop_mac'
+  if (/camera|lens|gopro/.test(d)) return 'photo_camera'
+  if (/car|vehicle|bike|motorcycle|keke|bus/.test(d)) return 'directions_car'
+  if (/chair|desk|table|cabinet|furniture/.test(d)) return 'chair'
+  return 'inventory_2'
+}
+
+function assetStatusLine(asset: Asset): string {
+  if (asset.disposed) return 'Disposed, no further allowance'
+  if (asset.current_year_allowance === 0) return 'Fully written down'
+  return 'Active, still being written down'
 }
 
 export function AssetsPage() {
@@ -48,8 +66,8 @@ export function AssetsPage() {
               <p className="text-sm text-on-surface-variant">Total Asset Value</p>
               <p className="text-2xl font-bold tabular-nums text-navy">{formatNaira(totalValue)}</p>
             </div>
-            <div className="rounded-lg bg-navy p-5 text-white shadow-level-1">
-              <p className="text-sm text-white/70">{currentYear} Deductible Allowance</p>
+            <div className="rounded-lg bg-accent p-5 text-bg shadow-level-1">
+              <p className="text-sm opacity-70">{currentYear} Deductible Allowance</p>
               <p className="text-2xl font-bold tabular-nums">{formatNaira(totalCurrentYearDeduction)}</p>
             </div>
           </div>
@@ -63,62 +81,58 @@ export function AssetsPage() {
           )}
 
           {assetsQuery.data.length > 0 && (
-            <div className="overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant text-left text-xs font-semibold uppercase text-on-surface-variant">
-                    <th className="px-4 py-3">Asset</th>
-                    <th className="px-4 py-3 tabular-nums">Purchase Value</th>
-                    <th className="px-4 py-3">Rate</th>
-                    <th className="px-4 py-3 tabular-nums">Current Year Ded.</th>
-                    <th className="px-4 py-3 tabular-nums">Claimed to Date</th>
-                    <th className="px-4 py-3 tabular-nums">Remaining to Deduct</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {assetsQuery.data.map((asset) => {
-                    const isFullyDepreciated = !asset.disposed && asset.current_year_allowance === 0
-                    return (
-                      <tr
-                        key={asset.asset_id}
-                        className={`border-b border-outline-variant last:border-0 ${
-                          asset.disposed || isFullyDepreciated ? 'opacity-60' : ''
-                        }`}
-                      >
-                        <td className="px-4 py-3">
-                          <p className={asset.disposed ? 'line-through' : ''}>{asset.description}</p>
-                          <p className="text-xs text-on-surface-variant">Purchased: {formatDate(asset.purchase_date)}</p>
-                        </td>
-                        <td className="px-4 py-3 tabular-nums">{formatNaira(asset.cost)}</td>
-                        <td className="px-4 py-3">{ASSET_CLASS_LABELS[asset.asset_class] ?? asset.asset_class}</td>
-                        <td className="px-4 py-3 tabular-nums text-emerald-dark">
+            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+              {assetsQuery.data.map((asset) => {
+                const deemphasize = asset.disposed || asset.current_year_allowance === 0
+                const cls = ASSET_CLASS[asset.asset_class] ?? { tag: asset.asset_class, rate: '—' }
+                return (
+                  <div
+                    key={asset.asset_id}
+                    className={`flex flex-col gap-3 rounded-lg bg-surface-container-lowest p-4 shadow-level-1 ${
+                      deemphasize ? 'opacity-55' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <span className="material-symbols-outlined text-2xl text-accent">
+                        {assetIcon(asset.description)}
+                      </span>
+                      <span className="rounded-full border border-outline-variant px-2 py-0.5 text-xs text-on-surface-variant">
+                        {cls.tag}
+                      </span>
+                    </div>
+                    <p className={`font-semibold ${asset.disposed ? 'line-through' : ''}`}>{asset.description}</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-on-surface-variant">Original cost</p>
+                        <p className="tabular-nums font-medium">{formatNaira(asset.cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-on-surface-variant">Rate</p>
+                        <p className="font-medium">{cls.rate}</p>
+                      </div>
+                      <div>
+                        <p className="text-on-surface-variant">This year's write-down</p>
+                        <p className="tabular-nums font-medium text-emerald-dark">
                           {formatNaira(asset.current_year_allowance)}
-                        </td>
-                        <td className="px-4 py-3 tabular-nums">{formatNaira(asset.cumulative_allowance_claimed)}</td>
-                        <td className="px-4 py-3 tabular-nums">{formatNaira(asset.remaining_value)}</td>
-                        <td className="px-4 py-3">
-                          <StatusPill
-                            label={asset.disposed ? 'Disposed' : isFullyDepreciated ? 'Fully Depreciated' : 'Active'}
-                            tone={assetStatusTone(asset.disposed, asset.current_year_allowance)}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          {!asset.disposed && (
-                            <button
-                              className="text-sm text-error hover:underline"
-                              onClick={() => setDisposeTarget({ id: asset.asset_id, description: asset.description })}
-                            >
-                              Dispose
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-on-surface-variant">Remaining value</p>
+                        <p className="tabular-nums font-medium">{formatNaira(asset.remaining_value)}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-on-surface-variant">{assetStatusLine(asset)}</p>
+                    {!asset.disposed && (
+                      <button
+                        className="self-start text-xs text-error hover:underline"
+                        onClick={() => setDisposeTarget({ id: asset.asset_id, description: asset.description })}
+                      >
+                        Dispose
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </>

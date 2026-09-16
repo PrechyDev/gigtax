@@ -13,6 +13,7 @@ class DashboardOut(BaseModel):
     total_reliefs: float
     total_capital_allowances: float
     estimated_tax_owed: float
+    approved_transactions_count: int
     pending_review_count: int
     uncategorized_count: int
     locked_statements_count: int

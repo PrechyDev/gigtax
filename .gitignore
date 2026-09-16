@@ -22,3 +22,4 @@ Thumbs.db
 
 # Local sample data / real financial documents — never commit these
 scripts/fixtures/
+design_by_claude/
