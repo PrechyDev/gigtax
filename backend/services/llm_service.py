@@ -49,7 +49,7 @@ class LLMService:
         self.default_vision_model = "gemini/gemini-3.5-flash"
 
         # Initialize the Instructor-patched client for structured outputs
-        self.structured_client = instructor.from_litellm(completion)
+        self.structured_client = instructor.from_litellm(completion, mode=instructor.Mode.JSON)
 
     def _execute_with_fallbacks(self, func, primary_model, *args, **kwargs):
         """
