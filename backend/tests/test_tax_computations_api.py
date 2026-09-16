@@ -29,10 +29,18 @@ def test_compute_uses_only_approved_transactions_for_the_year(client):
     assert body["estimated_tax_owed"] == 690_000
 
 
-def test_get_before_compute_returns_404(client):
+def test_get_before_any_transactions_returns_zeroed_computation(client):
+    # GET always recomputes live from currently-approved transactions (see
+    # get_tax_computation in api/routes/tax_computations.py) rather than reading a
+    # row a prior POST /compute call stored — so a user who never called /compute at
+    # all still gets a real (zeroed, since there's nothing to tax yet) computation
+    # rather than a 404. This is what the Reports page relies on: it only ever GETs.
     headers = _auth_header(client, "tax-api-user2@example.com")
     response = client.get("/tax-computations/2026", headers=headers)
-    assert response.status_code == 404
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_income"] == 0
+    assert body["estimated_tax_owed"] == 0
 
 
 def test_get_after_compute_returns_stored_breakdown(client):
